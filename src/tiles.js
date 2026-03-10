@@ -6,6 +6,8 @@ export const GAME_CONFIG = {
   floorHeight: 18 * 3,
   levelWidth: 18 * 230,
   playerStart: { x: 64, y: 120 },
+  cameraZoom: 1.3,
+  cameraYOffset: 110,
   maxLives: 6,
   damageCooldown: 0.7,
 };

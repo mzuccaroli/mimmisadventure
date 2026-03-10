@@ -36,6 +36,8 @@ setupPlayerMovement(k, player, {
   playerSpeed: GAME_CONFIG.playerSpeed,
   playerStart: level.playerStart,
   levelWidth: level.levelWidth,
+  cameraZoom: GAME_CONFIG.cameraZoom,
+  cameraYOffset: GAME_CONFIG.cameraYOffset,
   isGameOver: lives.isGameOver,
 });
 

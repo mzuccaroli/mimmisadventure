@@ -21,6 +21,8 @@ const LEVEL_ONE_ASCII = [
   "##########################################################################################################################",
   "##########################################################################################################################",
   "##########################################################################################################################",
+  "##########################################################################################################################",
+  "##########################################################################################################################",
 ];
 
 const TERRAIN_TOP_TILES = ["grass_1", "grass_2", "grass_3"];
@@ -109,13 +111,15 @@ function buildTerrainColliderRects(mapLines) {
 }
 
 function addSky(k, levelWidth) {
+  const skyExtraHeight = GAME_CONFIG.tile * 12;
+
   k.add([
     k.pos(0, 0),
     k.sprite("kenneyBg", { frame: 0 }),
     k.scale(
       k.vec2(
         levelWidth / GAME_CONFIG.bgTile,
-        k.height() / GAME_CONFIG.bgTile,
+        (k.height() + skyExtraHeight) / GAME_CONFIG.bgTile,
       ),
     ),
     k.z(-30),
@@ -125,7 +129,7 @@ function addSky(k, levelWidth) {
 
   for (let i = 0; i < cloudCopies; i++) {
     k.add([
-      k.pos(i * GAME_CONFIG.bgTile * 4 - 40, 36),
+      k.pos(i * GAME_CONFIG.bgTile * 4 - 40, 200),
       k.sprite("kenneyBg", { frame: 8 }),
       k.scale(2),
       k.opacity(0.55),
@@ -133,7 +137,7 @@ function addSky(k, levelWidth) {
     ]);
 
     k.add([
-      k.pos(i * GAME_CONFIG.bgTile * 4 - 20, 90),
+      k.pos(i * GAME_CONFIG.bgTile * 4 - 20, 255),
       k.sprite("kenneyBg", { frame: 10 }),
       k.scale(2),
       k.opacity(0.75),

@@ -9,7 +9,14 @@ export function createPlayer(k, playerStart, jumpForce) {
 }
 
 export function setupPlayerMovement(k, player, options) {
-  const { playerSpeed, playerStart, levelWidth, isGameOver } = options;
+  const {
+    playerSpeed,
+    playerStart,
+    levelWidth,
+    cameraZoom = 1,
+    cameraYOffset = 0,
+    isGameOver,
+  } = options;
   let facingLeft = false;
 
   function jumpIfGrounded() {
@@ -81,10 +88,19 @@ export function setupPlayerMovement(k, player, options) {
       player.vel.x = 0;
     }
 
-    const camHalfW = k.width() / 2;
+    k.setCamScale(cameraZoom);
+
+    const camHalfW = k.width() / (2 * cameraZoom);
+    const camHalfH = k.height() / (2 * cameraZoom);
     const camMinX = camHalfW;
     const camMaxX = Math.max(camHalfW, levelWidth - camHalfW);
     const camX = k.clamp(player.pos.x, camMinX, camMaxX);
-    k.setCamPos(camX, k.height() / 2);
+
+    const camMinY = camHalfH;
+    const camMaxY = k.height() - camHalfH - 1;
+    const targetCamY = k.height() / 2 + cameraYOffset;
+    const camY = k.clamp(targetCamY, camMinY, camMaxY);
+
+    k.setCamPos(camX, camY);
   });
 }
