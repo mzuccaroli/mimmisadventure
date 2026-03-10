@@ -1,4 +1,5 @@
 import kaplay from "kaplay";
+import { loadBackgroundTileAssets } from "./backgroundTiles.js";
 import {
   createDialogSystem,
   getLevelGoalPlaceholderPages,
@@ -15,6 +16,7 @@ import { GAME_CONFIG, TAGS, loadTileAssets } from "./tiles.js";
 const k = kaplay();
 
 loadTileAssets(k);
+loadBackgroundTileAssets(k);
 loadEnvironmentTileAssets(k);
 loadEnemyTileAssets(k);
 loadServiceTiles(k);
