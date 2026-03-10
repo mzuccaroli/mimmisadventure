@@ -15,9 +15,9 @@ const LEVEL_ONE_ASCII = [
   "      #########                                   ######                                                                 ",
   "                                                                                                                         ",
   "                           #######                                      #######                                          ",
-  "        ##                         ###          ######                    ####                                           ",
+  "        ##                         ###          ######                                                                   ",
   "   P    ##     #        ###                     ######                                  ####                        d    ",
-  "        ##  ^^^#        #^^   ^^      ^^^    ^^ ######    E   ^^     ^^^    X  ^^   ^^^^                              G ",
+  "      G ##  ^^^#        #^^   ^^      ^^^    ^^ ######    E   ^^     ^^^    X  ^^   ^^^^                               ",
   "##########################################################################################################################",
   "##########################################################################################################################",
   "##########################################################################################################################",
@@ -217,6 +217,7 @@ function addPatrolEnemy(
   animationSpeed = 8,
   shouldTurn = null,
   ignoreHazards = false,
+  isDialogOpen = () => false,
 ) {
   const animationFrames = getEnemySpriteFrames(enemyName);
   const enemy = k.add([
@@ -264,6 +265,11 @@ function addPatrolEnemy(
   }
 
   enemy.onUpdate(() => {
+    if (isDialogOpen()) {
+      enemy.vel = k.vec2(0, 0);
+      return;
+    }
+
     turnCooldown = Math.max(0, turnCooldown - k.dt());
     const bbox = enemy.worldArea().bbox();
 
@@ -308,7 +314,8 @@ function addPatrolEnemy(
   return enemy;
 }
 
-export function buildLevelOne(k) {
+export function buildLevelOne(k, options = {}) {
+  const { isDialogOpen = () => false } = options;
   const mapLines = normalizeAsciiMap(LEVEL_ONE_ASCII);
   const rows = mapLines.length;
   const cols = mapLines[0].length;
@@ -414,6 +421,7 @@ export function buildLevelOne(k) {
           8,
           shouldEnemyTurn,
           false,
+          isDialogOpen,
         );
       } else if (cell === "X") {
         addPatrolEnemy(
@@ -426,6 +434,7 @@ export function buildLevelOne(k) {
           8,
           shouldEnemyTurn,
           true,
+          isDialogOpen,
         );
       }
     }

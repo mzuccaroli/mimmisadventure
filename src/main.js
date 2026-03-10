@@ -1,4 +1,5 @@
 import kaplay from "kaplay";
+import { createDialogSystem, getGoalPlaceholderPages } from "./dialogUI.js";
 import { setupLivesSystem } from "./lives.js";
 import { buildLevelOne } from "./levels/levelOne.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
@@ -15,8 +16,13 @@ loadEnemyTileAssets(k);
 loadServiceTiles(k);
 k.setGravity(1800);
 
-const level = buildLevelOne(k);
+let dialogOpen = false;
+
+const level = buildLevelOne(k, {
+  isDialogOpen: () => dialogOpen,
+});
 const player = createPlayer(k, level.playerStart, GAME_CONFIG.jumpForce);
+const dialogSystem = createDialogSystem(k);
 
 const HELP_TEXT = "A/D o frecce: muovi  |  Spazio, W o ↑: salta";
 const HELP_HINT_TEXT = "Premi H per rivedere questo aiuto";
@@ -100,6 +106,7 @@ const lives = setupLivesSystem(k, player, {
 ["space", "w", "up"].forEach((key) => {
   k.onKeyPress(key, () => {
     if (firstJumpTriggered) return;
+    if (dialogOpen) return;
     if (lives.isGameOver() || lives.isRespawning()) return;
     if (!player.isGrounded()) return;
 
@@ -109,7 +116,7 @@ const lives = setupLivesSystem(k, player, {
 });
 
 k.onKeyPress("h", () => {
-  if (lives.isGameOver()) return;
+  if (lives.isGameOver() || dialogOpen) return;
   playHelpVisibilityCycle(5);
 });
 
@@ -121,6 +128,7 @@ setupPlayerMovement(k, player, {
   cameraYOffset: GAME_CONFIG.cameraYOffset,
   isGameOver: lives.isGameOver,
   isRespawning: lives.isRespawning,
+  isDialogOpen: () => dialogOpen,
 });
 
 let reachedGoal = false;
@@ -129,15 +137,33 @@ player.onCollide(TAGS.goal, () => {
   if (lives.isGameOver()) return;
   if (reachedGoal) return;
   reachedGoal = true;
+  dialogOpen = true;
 
-  k.add([
-    k.text("Traguardo raggiunto!", { size: 42 }),
-    k.pos(k.width() / 2, 70),
-    k.anchor("center"),
-    k.color(20, 120, 40),
-    k.fixed(),
-    k.z(110),
-  ]);
+  player.stop();
+  player.vel = k.vec2(0, 0);
+  player.isStatic = true;
+
+  for (const enemy of k.get("enemy")) {
+    enemy.vel = k.vec2(0, 0);
+    enemy.isStatic = true;
+  }
+
+  dialogSystem.openDialog(getGoalPlaceholderPages(), {
+    onClose: () => {
+      dialogOpen = false;
+
+      if (!lives.isGameOver()) {
+        player.isStatic = false;
+      }
+
+      for (const enemy of k.get("enemy")) {
+        enemy.isStatic = false;
+      }
+    },
+  });
 });
 
-player.onCollide(TAGS.hazard, lives.damagePlayer);
+player.onCollide(TAGS.hazard, () => {
+  if (dialogOpen) return;
+  lives.damagePlayer();
+});

@@ -17,36 +17,37 @@ export function setupPlayerMovement(k, player, options) {
     cameraYOffset = 0,
     isGameOver,
     isRespawning = () => false,
+    isDialogOpen = () => false,
   } = options;
   let facingLeft = false;
 
   function jumpIfGrounded() {
-    if (isGameOver() || isRespawning()) return;
+    if (isGameOver() || isRespawning() || isDialogOpen()) return;
     if (player.isGrounded()) {
       player.jump();
     }
   }
 
   k.onKeyDown("left", () => {
-    if (isGameOver() || isRespawning()) return;
+    if (isGameOver() || isRespawning() || isDialogOpen()) return;
     facingLeft = true;
     player.move(-playerSpeed, 0);
   });
 
   k.onKeyDown("a", () => {
-    if (isGameOver() || isRespawning()) return;
+    if (isGameOver() || isRespawning() || isDialogOpen()) return;
     facingLeft = true;
     player.move(-playerSpeed, 0);
   });
 
   k.onKeyDown("right", () => {
-    if (isGameOver() || isRespawning()) return;
+    if (isGameOver() || isRespawning() || isDialogOpen()) return;
     facingLeft = false;
     player.move(playerSpeed, 0);
   });
 
   k.onKeyDown("d", () => {
-    if (isGameOver() || isRespawning()) return;
+    if (isGameOver() || isRespawning() || isDialogOpen()) return;
     facingLeft = false;
     player.move(playerSpeed, 0);
   });
@@ -58,7 +59,7 @@ export function setupPlayerMovement(k, player, options) {
   player.onUpdate(() => {
     if (isGameOver()) return;
 
-    if (!isRespawning()) {
+    if (!isRespawning() && !isDialogOpen()) {
       player.flipX = false;
 
       if (!player.isGrounded()) {
