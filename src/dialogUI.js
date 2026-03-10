@@ -2,14 +2,24 @@ const DIALOG_PANEL_Z = 110;
 const DIALOG_TEXT_Z = 111;
 const DIALOG_HINT_Z = 112;
 
-const GOAL_PLACEHOLDER_PAGES = [
+const SIGN_PLACEHOLDER_PAGES = [
   "[Placeholder dialogo - 1/3]\nPersonaggio: ...\nNPC: ...\nIl viaggio non e ancora finito.",
   "[Placeholder dialogo - 2/3]\nPersonaggio: ...\nNPC: ...\nQui andra la seconda battuta del dialogo.",
   "[Placeholder dialogo - 3/3]\nPersonaggio: ...\nNPC: ...\nFine dialogo placeholder.",
 ];
 
-export function getGoalPlaceholderPages() {
-  return [...GOAL_PLACEHOLDER_PAGES];
+const LEVEL_GOAL_PLACEHOLDER_PAGES = [
+  "[Traguardo - 1/3]\nPersonaggio: ...\nHai raggiunto la fine del livello!",
+  "[Traguardo - 2/3]\nNPC: ...\nOttimo lavoro, preparati alla prossima sfida.",
+  "[Traguardo - 3/3]\nSistema: ...\nPlaceholder dialogo finale del livello.",
+];
+
+export function getSignPlaceholderPages() {
+  return [...SIGN_PLACEHOLDER_PAGES];
+}
+
+export function getLevelGoalPlaceholderPages() {
+  return [...LEVEL_GOAL_PLACEHOLDER_PAGES];
 }
 
 export function createDialogSystem(k) {
@@ -79,7 +89,7 @@ export function createDialogSystem(k) {
     const normalizedPages =
       Array.isArray(dialogPages) && dialogPages.length > 0
         ? dialogPages
-        : getGoalPlaceholderPages();
+        : getSignPlaceholderPages();
 
     if (opened) {
       closeDialog();

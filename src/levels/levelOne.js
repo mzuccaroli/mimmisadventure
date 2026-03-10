@@ -11,13 +11,13 @@ const LEVEL_ONE_ASCII = [
   "                              ~~~                                               #####                                    ",
   "                                                                                                         ####            ",
   "                         #######                                                                                         ",
-  "                                                                                   #####                                 ",
+  "                         #######                                                   #####                                 ",
   "      #########                                   ######                                                                 ",
   "                                                                                                                         ",
   "                           #######                                      #######                                          ",
   "        ##                         ###          ######                                                                   ",
-  "   P    ##     #        ###                     ######                                  ####                        d    ",
-  "      G ##  ^^^#        #^^   ^^      ^^^    ^^ ######    E   ^^     ^^^    X  ^^   ^^^^                               ",
+  "   P  s ##     #        ###                     ######                                  ####                        d G  ",
+  "        ##  ^^^#        #^^   ^^      ^^^    ^^ ######    E   ^^     ^^^    X  ^^   ^^^^                X                ",
   "##########################################################################################################################",
   "##########################################################################################################################",
   "##########################################################################################################################",
@@ -25,14 +25,18 @@ const LEVEL_ONE_ASCII = [
   "##########################################################################################################################",
 ];
 
-const TERRAIN_TOP_TILES = ["grass_1", "grass_2", "grass_3"];
-const TERRAIN_FILL_TILES = [
-  "ground_fill_1",
-  "ground_fill_2",
-  "ground_fill_3",
-  "ground_fill_4",
-  "ground_fill_5",
-];
+const TERRAIN_TOP_TILES_NO_SUPPORT = {
+  single: "grass_single",
+  left: "grass_1",
+  center: "grass_2",
+  right: "grass_3",
+};
+const TERRAIN_TOP_TILES_WITH_SUPPORT = {
+  single: "grass_single_1",
+  left: "grass_4",
+  center: "grass_5",
+  right: "grass_6",
+};
 
 const DECORATION_BY_CHAR = Object.freeze({
   t: { sprite: "tree_1", scale: 2 },
@@ -40,6 +44,7 @@ const DECORATION_BY_CHAR = Object.freeze({
   g: { sprite: "plant_1", scale: 2 },
   ">": { sprite: "sign_arrow_r", scale: 2 },
   "<": { sprite: "sign_arrow_l", scale: 2 },
+  s: { sprite: "sign_board_3", scale: 2 },
   o: { sprite: "obstacle_torch_red", scale: 2 },
   d: { sprite: "door_1", scale: 2 },
 });
@@ -195,10 +200,56 @@ function addDecoration(k, spriteName, x, y, scale = 2) {
   ]);
 }
 
-function addTerrainTile(k, x, y, col, row, isTop) {
+function getFillSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight) {
+  if (!hasTerrainLeft && !hasTerrainRight) {
+    return hasTerrainBelow ? "ground_fill_2" : "ground_fill_6";
+  }
+
+  if (!hasTerrainLeft && hasTerrainRight) {
+    return hasTerrainBelow ? "ground_fill_3" : "ground_fill_7";
+  }
+
+  if (hasTerrainLeft && hasTerrainRight) {
+    return hasTerrainBelow ? "ground_fill_4" : "ground_fill_8";
+  }
+
+  return hasTerrainBelow ? "ground_fill_5" : "ground_fill_9";
+}
+
+function getTopSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight) {
+  const tiles = hasTerrainBelow
+    ? TERRAIN_TOP_TILES_WITH_SUPPORT
+    : TERRAIN_TOP_TILES_NO_SUPPORT;
+
+  if (!hasTerrainLeft && !hasTerrainRight) {
+    return tiles.single;
+  }
+
+  if (!hasTerrainLeft && hasTerrainRight) {
+    return tiles.left;
+  }
+
+  if (hasTerrainLeft && hasTerrainRight) {
+    return tiles.center;
+  }
+
+  return tiles.right;
+}
+
+function addTerrainTile(
+  k,
+  x,
+  y,
+  col,
+  row,
+  isTop,
+  hasTerrainBelow,
+  hasTerrainLeft,
+  hasTerrainRight,
+) {
   const spriteName = isTop
-    ? TERRAIN_TOP_TILES[col % TERRAIN_TOP_TILES.length]
-    : TERRAIN_FILL_TILES[(row + col) % TERRAIN_FILL_TILES.length];
+    ? getTopSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight)
+    : getFillSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight);
 
   k.add([
     k.pos(x, y),
@@ -363,7 +414,20 @@ export function buildLevelOne(k, options = {}) {
 
       if (cell === "#") {
         const isTop = mapCharAt(mapLines, row - 1, col) !== "#";
-        addTerrainTile(k, x, y, col, row, isTop);
+        const hasTerrainBelow = mapCharAt(mapLines, row + 1, col) === "#";
+        const hasTerrainLeft = mapCharAt(mapLines, row, col - 1) === "#";
+        const hasTerrainRight = mapCharAt(mapLines, row, col + 1) === "#";
+        addTerrainTile(
+          k,
+          x,
+          y,
+          col,
+          row,
+          isTop,
+          hasTerrainBelow,
+          hasTerrainLeft,
+          hasTerrainRight,
+        );
       } else if (cell === "^") {
         addSpikeObstacle(k, x, y, 1);
       } else if (cell === "~") {
@@ -379,6 +443,16 @@ export function buildLevelOne(k, options = {}) {
         playerStart = k.vec2(x, y - GAME_CONFIG.tile);
       } else if (cell === "G") {
         goalPos = k.vec2(x, y);
+      } else if (cell === "s") {
+        const decoration = DECORATION_BY_CHAR[cell];
+        addDecoration(k, decoration.sprite, x, y, decoration.scale);
+        k.add([
+          k.pos(x, y - GAME_CONFIG.tile),
+          k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
+          k.area(),
+          k.opacity(0),
+          TAGS.dialogTrigger,
+        ]);
       } else if (DECORATION_BY_CHAR[cell]) {
         const decoration = DECORATION_BY_CHAR[cell];
         addDecoration(k, decoration.sprite, x, y, decoration.scale);

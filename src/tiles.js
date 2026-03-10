@@ -16,6 +16,7 @@ export const TAGS = {
   goal: "goal",
   hazard: "hazard",
   spike: "spike",
+  dialogTrigger: "dialogTrigger",
 };
 
 export const TILE_FRAMES = {

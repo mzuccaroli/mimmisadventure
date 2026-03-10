@@ -1,5 +1,9 @@
 import kaplay from "kaplay";
-import { createDialogSystem, getGoalPlaceholderPages } from "./dialogUI.js";
+import {
+  createDialogSystem,
+  getLevelGoalPlaceholderPages,
+  getSignPlaceholderPages,
+} from "./dialogUI.js";
 import { setupLivesSystem } from "./lives.js";
 import { buildLevelOne } from "./levels/levelOne.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
@@ -17,9 +21,10 @@ loadServiceTiles(k);
 k.setGravity(1800);
 
 let dialogOpen = false;
+let goalSequenceActive = false;
 
 const level = buildLevelOne(k, {
-  isDialogOpen: () => dialogOpen,
+  isDialogOpen: () => dialogOpen || goalSequenceActive,
 });
 const player = createPlayer(k, level.playerStart, GAME_CONFIG.jumpForce);
 const dialogSystem = createDialogSystem(k);
@@ -106,7 +111,7 @@ const lives = setupLivesSystem(k, player, {
 ["space", "w", "up"].forEach((key) => {
   k.onKeyPress(key, () => {
     if (firstJumpTriggered) return;
-    if (dialogOpen) return;
+    if (dialogOpen || goalSequenceActive) return;
     if (lives.isGameOver() || lives.isRespawning()) return;
     if (!player.isGrounded()) return;
 
@@ -116,7 +121,7 @@ const lives = setupLivesSystem(k, player, {
 });
 
 k.onKeyPress("h", () => {
-  if (lives.isGameOver() || dialogOpen) return;
+  if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
   playHelpVisibilityCycle(5);
 });
 
@@ -128,42 +133,108 @@ setupPlayerMovement(k, player, {
   cameraYOffset: GAME_CONFIG.cameraYOffset,
   isGameOver: lives.isGameOver,
   isRespawning: lives.isRespawning,
-  isDialogOpen: () => dialogOpen,
+  isDialogOpen: () => dialogOpen || goalSequenceActive,
 });
 
-let reachedGoal = false;
-
-player.onCollide(TAGS.goal, () => {
-  if (lives.isGameOver()) return;
-  if (reachedGoal) return;
-  reachedGoal = true;
-  dialogOpen = true;
-
-  player.stop();
-  player.vel = k.vec2(0, 0);
-  player.isStatic = true;
-
+function freezeEnemies() {
   for (const enemy of k.get("enemy")) {
     enemy.vel = k.vec2(0, 0);
     enemy.isStatic = true;
   }
+}
 
-  dialogSystem.openDialog(getGoalPlaceholderPages(), {
-    onClose: () => {
-      dialogOpen = false;
+function unfreezeEnemies() {
+  for (const enemy of k.get("enemy")) {
+    enemy.isStatic = false;
+  }
+}
 
-      if (!lives.isGameOver()) {
-        player.isStatic = false;
-      }
+function lockForDialog() {
+  dialogOpen = true;
+  goalSequenceActive = false;
+  player.stop();
+  player.vel = k.vec2(0, 0);
+  player.isStatic = true;
+  freezeEnemies();
+}
 
-      for (const enemy of k.get("enemy")) {
-        enemy.isStatic = false;
-      }
-    },
+function unlockAfterDialog() {
+  dialogOpen = false;
+  if (!lives.isGameOver()) {
+    player.isStatic = false;
+  }
+  unfreezeEnemies();
+}
+
+function openDialogWithLock(pages) {
+  lockForDialog();
+  dialogSystem.openDialog(pages, {
+    onClose: unlockAfterDialog,
   });
+}
+
+function playGoalCelebrationThenDialog() {
+  if (dialogOpen || goalSequenceActive) return;
+
+  goalSequenceActive = true;
+  freezeEnemies();
+
+  const spinFrames = [5, 6, 7, 4];
+  let frameIndex = 0;
+  let frameTimer = 0;
+  let elapsed = 0;
+
+  player.stop();
+  player.isStatic = false;
+  player.vel = k.vec2(0, -560);
+  player.frame = spinFrames[0];
+
+  const celebrationCtrl = player.onUpdate(() => {
+    if (!goalSequenceActive) {
+      celebrationCtrl.cancel();
+      return;
+    }
+
+    const dt = k.dt();
+    elapsed += dt;
+    frameTimer += dt;
+
+    if (frameTimer >= 0.06) {
+      frameTimer = 0;
+      frameIndex = (frameIndex + 1) % spinFrames.length;
+      player.frame = spinFrames[frameIndex];
+    }
+
+    const landed = elapsed >= 0.35 && player.isGrounded();
+    const timedOut = elapsed >= 1.1;
+
+    if (landed || timedOut) {
+      celebrationCtrl.cancel();
+      player.vel = k.vec2(0, 0);
+      player.frame = 5;
+      openDialogWithLock(getLevelGoalPlaceholderPages());
+    }
+  });
+}
+
+let reachedDialogTrigger = false;
+let reachedGoal = false;
+
+player.onCollide(TAGS.dialogTrigger, () => {
+  if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+  if (reachedDialogTrigger) return;
+  reachedDialogTrigger = true;
+  openDialogWithLock(getSignPlaceholderPages());
+});
+
+player.onCollide(TAGS.goal, () => {
+  if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+  if (reachedGoal) return;
+  reachedGoal = true;
+  playGoalCelebrationThenDialog();
 });
 
 player.onCollide(TAGS.hazard, () => {
-  if (dialogOpen) return;
+  if (dialogOpen || goalSequenceActive) return;
   lives.damagePlayer();
 });
