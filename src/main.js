@@ -18,18 +18,99 @@ k.setGravity(1800);
 const level = buildLevelOne(k);
 const player = createPlayer(k, level.playerStart, GAME_CONFIG.jumpForce);
 
-k.add([
-  k.text("A/D o frecce: muovi  |  Spazio, W o ↑: salta", { size: 20 }),
-  k.pos(20, 20),
-  k.color(20, 20, 20),
-  k.fixed(),
-  k.z(10),
-]);
+const HELP_TEXT = "A/D o frecce: muovi  |  Spazio, W o ↑: salta";
+const HELP_HINT_TEXT = "Premi H per rivedere questo aiuto";
+
+let helpLabel = null;
+let helpFadeCtrl = null;
+let helpSequenceId = 0;
+let firstJumpTriggered = false;
+
+function showHelpLabel(text) {
+  if (helpFadeCtrl) {
+    helpFadeCtrl.cancel();
+    helpFadeCtrl = null;
+  }
+
+  if (helpLabel) {
+    helpLabel.destroy();
+  }
+
+  helpLabel = k.add([
+    k.text(text, { size: 20 }),
+    k.pos(20, 20),
+    k.color(20, 20, 20),
+    k.opacity(1),
+    k.fixed(),
+    k.z(10),
+  ]);
+}
+
+function fadeOutHelpLabel(duration = 0.8) {
+  if (!helpLabel) return;
+
+  if (helpFadeCtrl) {
+    helpFadeCtrl.cancel();
+    helpFadeCtrl = null;
+  }
+
+  const target = helpLabel;
+  const fadeStartTime = k.time();
+
+  helpFadeCtrl = target.onUpdate(() => {
+    const elapsed = k.time() - fadeStartTime;
+    const t = Math.min(1, elapsed / duration);
+    target.opacity = 1 - t;
+
+    if (t >= 1) {
+      helpFadeCtrl.cancel();
+      helpFadeCtrl = null;
+      if (helpLabel === target) {
+        helpLabel = null;
+      }
+      target.destroy();
+    }
+  });
+}
+
+function playHelpVisibilityCycle(helpDurationSeconds) {
+  const sequenceId = ++helpSequenceId;
+
+  showHelpLabel(HELP_TEXT);
+
+  k.wait(helpDurationSeconds, () => {
+    if (sequenceId !== helpSequenceId) return;
+    showHelpLabel(HELP_HINT_TEXT);
+
+    k.wait(1.2, () => {
+      if (sequenceId !== helpSequenceId) return;
+      fadeOutHelpLabel(0.8);
+    });
+  });
+}
+
+showHelpLabel(HELP_TEXT);
 
 const lives = setupLivesSystem(k, player, {
   maxLives: GAME_CONFIG.maxLives,
   damageCooldown: GAME_CONFIG.damageCooldown,
   respawnPos: level.playerStart,
+});
+
+["space", "w", "up"].forEach((key) => {
+  k.onKeyPress(key, () => {
+    if (firstJumpTriggered) return;
+    if (lives.isGameOver() || lives.isRespawning()) return;
+    if (!player.isGrounded()) return;
+
+    firstJumpTriggered = true;
+    playHelpVisibilityCycle(2);
+  });
+});
+
+k.onKeyPress("h", () => {
+  if (lives.isGameOver()) return;
+  playHelpVisibilityCycle(5);
 });
 
 setupPlayerMovement(k, player, {
@@ -39,6 +120,7 @@ setupPlayerMovement(k, player, {
   cameraZoom: GAME_CONFIG.cameraZoom,
   cameraYOffset: GAME_CONFIG.cameraYOffset,
   isGameOver: lives.isGameOver,
+  isRespawning: lives.isRespawning,
 });
 
 let reachedGoal = false;

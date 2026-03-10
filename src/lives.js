@@ -12,6 +12,7 @@ export function setupLivesSystem(k, player, options) {
   let lives = maxLives;
   let canTakeDamage = true;
   let gameOver = false;
+  let respawning = false;
 
   function clearHeartIcons() {
     while (heartIcons.length > 0) {
@@ -70,7 +71,18 @@ export function setupLivesSystem(k, player, options) {
       k.z(101),
     ]);
 
-    k.debug.paused = true;
+    k.add([
+      k.text("Premi N per ricominciare", { size: 26 }),
+      k.pos(k.width() / 2, k.height() / 2 + 56),
+      k.anchor("center"),
+      k.color(245, 245, 245),
+      k.fixed(),
+      k.z(101),
+    ]);
+
+    k.onKeyPress("n", () => {
+      window.location.reload();
+    });
   }
 
   function damagePlayer() {
@@ -85,10 +97,47 @@ export function setupLivesSystem(k, player, options) {
     }
 
     canTakeDamage = false;
-    player.pos = k.vec2(respawnPos.x, respawnPos.y);
-    player.vel = k.vec2(0, 0);
-    k.wait(damageCooldown, () => {
-      canTakeDamage = true;
+    respawning = true;
+
+    const transitionDuration = Math.min(0.22, damageCooldown * 0.35);
+    const cooldownRemainder = Math.max(0, damageCooldown - transitionDuration);
+    const spinDirection = player.vel.x < 0 ? -1 : 1;
+    const startTime = k.time();
+    const frameStepDuration = 0.055;
+    const rightSideFrame = 5;
+    const leftSideFrame = 7;
+    const frontFrame = 6;
+    const backFrame = 4;
+    const sideFrame = spinDirection < 0 ? leftSideFrame : rightSideFrame;
+    const oppositeSideFrame =
+      sideFrame === rightSideFrame ? leftSideFrame : rightSideFrame;
+    const spinFrames =
+      spinDirection > 0
+        ? [sideFrame, frontFrame, oppositeSideFrame, backFrame]
+        : [sideFrame, backFrame, oppositeSideFrame, frontFrame];
+
+    player.stop();
+    player.angle = 0;
+    player.vel = k.vec2(95 * spinDirection, -300);
+
+    const transitionCtrl = player.onUpdate(() => {
+      const elapsed = k.time() - startTime;
+      const t = Math.min(1, elapsed / transitionDuration);
+      const spinIndex = Math.floor(elapsed / frameStepDuration) % spinFrames.length;
+      player.frame = spinFrames[spinIndex];
+
+      if (t >= 1) {
+        transitionCtrl.cancel();
+        player.angle = 0;
+        player.frame = sideFrame;
+        player.pos = k.vec2(respawnPos.x, respawnPos.y);
+        player.vel = k.vec2(0, 0);
+        respawning = false;
+
+        k.wait(cooldownRemainder, () => {
+          canTakeDamage = true;
+        });
+      }
     });
   }
 
@@ -97,5 +146,6 @@ export function setupLivesSystem(k, player, options) {
   return {
     damagePlayer,
     isGameOver: () => gameOver,
+    isRespawning: () => respawning,
   };
 }
