@@ -3,20 +3,22 @@ import { getEnemySpriteFrames } from "../enemyTiles.js";
 import { getEnvironmentTileSprite } from "../environmentTiles.js";
 
 const TERRAIN_TAG = "terrain";
+const NPC_VISUAL_HEIGHT = 23;
+const NPC_SCALE = 2;
 
 const LEVEL_ONE_ASCII = [
   "                                                                                     ~~~                                 ",
   "                 #######                                                                                                 ",
-  "    E                                                                    ~~                                              ",
+  "    E            #######                                                 ~~                                              ",
   "                              ~~~                                               #####                                    ",
-  "                                                                                                         ####            ",
-  "                         #######                                                   ^^^^^               E                 ",
+  "                                                                                                     ########            ",
+  "                         #######                                                   ^^^^^                                 ",
   "                         #######                                                   #####                                 ",
   "      #########                                   ######                                                                 ",
   "                                                                                                                         ",
   "                           #######                                      #######                                          ",
   "        ##                         ###          ######                                                                   ",
-  "   P  s ##     #        ###                     ######                                  ####                        d G  ",
+  "   P  s ##     #        ###                     ######                                  ####        E               d  S ",
   "        ##  ^^^#        #^^   ^^      ^^^    ^^ ######    E   ^^     ^^^    X  ^^   ^^^^                                 ",
   "##########################################################################################################################",
   "##########################################################################################################################",
@@ -200,6 +202,24 @@ function addDecoration(k, spriteName, x, y, scale = 2) {
   ]);
 }
 
+function addTownfolkNpc(k, x, y) {
+  // Sprite frames are 24x32 but the visible character occupies ~25px in height.
+  const npcPosY = y + GAME_CONFIG.tile - NPC_VISUAL_HEIGHT * NPC_SCALE;
+
+  const npc = k.add([
+    k.pos(x, npcPosY),
+    k.sprite("npcTownfolkOldM001", { anim: "front" }),
+    k.scale(NPC_SCALE),
+    k.area(),
+    k.z(3),
+    TAGS.goal,
+    "npc",
+  ]);
+
+  npc.play("front");
+  return npc;
+}
+
 function getFillSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight) {
   if (!hasTerrainLeft && !hasTerrainRight) {
     return hasTerrainBelow ? "ground_fill_2" : "ground_fill_6";
@@ -378,7 +398,7 @@ export function buildLevelOne(k, options = {}) {
   addSky(k, levelWidth);
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
-  let goalPos = null;
+  let npcSpawnPos = null;
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -441,8 +461,8 @@ export function buildLevelOne(k, options = {}) {
         }
       } else if (cell === "P") {
         playerStart = k.vec2(x, y - GAME_CONFIG.tile);
-      } else if (cell === "G") {
-        goalPos = k.vec2(x, y);
+      } else if (cell === "S") {
+        npcSpawnPos = k.vec2(x, y);
       } else if (cell === "s") {
         const decoration = DECORATION_BY_CHAR[cell];
         addDecoration(k, decoration.sprite, x, y, decoration.scale);
@@ -514,26 +534,11 @@ export function buildLevelOne(k, options = {}) {
     }
   }
 
-  if (!goalPos) {
-    goalPos = k.vec2(levelWidth - GAME_CONFIG.tile * 4, floorY - GAME_CONFIG.tile * 2);
+  if (npcSpawnPos) {
+    addTownfolkNpc(k, npcSpawnPos.x, npcSpawnPos.y);
+  } else {
+    addTownfolkNpc(k, playerStart.x + GAME_CONFIG.tile * 4, playerStart.y);
   }
-
-  const goalX = goalPos.x;
-  const goalY = goalPos.y;
-
-  k.add([
-    k.pos(goalX, goalY),
-    k.rect(36, 30),
-    k.area(),
-    k.opacity(0),
-    TAGS.goal,
-  ]);
-
-  k.add([
-    k.pos(goalX + 6, goalY - 12),
-    k.sprite(getEnvironmentTileSprite("coin_1")),
-    k.scale(2),
-  ]);
 
   return {
     levelWidth,

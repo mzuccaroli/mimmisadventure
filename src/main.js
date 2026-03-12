@@ -1,11 +1,11 @@
 import kaplay from "kaplay";
 import { loadBackgroundTileAssets } from "./backgroundTiles.js";
-import {
-  createDialogSystem,
-  getLevelGoalPlaceholderPages,
-  getSignPlaceholderPages,
-} from "./dialogUI.js";
+import { createDialogSystem } from "./dialogUI.js";
 import { setupLivesSystem } from "./lives.js";
+import {
+  getLevelOneGoalDialogPages,
+  getLevelOneSignDialogPages,
+} from "./levels/levelOneDialogs.js";
 import { buildLevelOne } from "./levels/levelOne.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
 import { loadEnemyTileAssets } from "./enemyTiles.js";
@@ -33,6 +33,7 @@ const dialogSystem = createDialogSystem(k);
 
 const HELP_TEXT = "A/D o frecce: muovi  |  Spazio, W o ↑: salta";
 const HELP_HINT_TEXT = "Premi H per rivedere questo aiuto";
+const PLAYER_FRONT_FRAME = 4;
 
 let helpLabel = null;
 let helpFadeCtrl = null;
@@ -156,6 +157,8 @@ function lockForDialog() {
   goalSequenceActive = false;
   player.stop();
   player.vel = k.vec2(0, 0);
+  player.flipX = false;
+  player.frame = PLAYER_FRONT_FRAME;
   player.isStatic = true;
   freezeEnemies();
 }
@@ -214,7 +217,7 @@ function playGoalCelebrationThenDialog() {
       celebrationCtrl.cancel();
       player.vel = k.vec2(0, 0);
       player.frame = 5;
-      openDialogWithLock(getLevelGoalPlaceholderPages());
+      openDialogWithLock(getLevelOneGoalDialogPages());
     }
   });
 }
@@ -226,7 +229,7 @@ player.onCollide(TAGS.dialogTrigger, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
   if (reachedDialogTrigger) return;
   reachedDialogTrigger = true;
-  openDialogWithLock(getSignPlaceholderPages());
+  openDialogWithLock(getLevelOneSignDialogPages());
 });
 
 player.onCollide(TAGS.goal, () => {
