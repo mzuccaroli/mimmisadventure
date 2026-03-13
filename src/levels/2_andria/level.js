@@ -1,24 +1,28 @@
 import { GAME_CONFIG, TAGS } from "../../tiles.js";
 import { getEnemySpriteFrames } from "../../enemyTiles.js";
 import { getEnvironmentTileSprite } from "../../environmentTiles.js";
+import { applyHouseAsciiMaps } from "../houseAsciiMaps.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
+const TINY_TOWN_TILE_SCALE = GAME_CONFIG.tile / 16;
+const HOUSE_TILE_CHARS = new Set("ABCFGHIJKLMNOQRTUVWYZ012aemwkx34".split(""));
 
+// House blocks use rectangles of H and are expanded through houseAsciiMaps.
 const LEVEL_TWO_ASCII = [
-  "                                                                                               ~~~~                         ~~~                                              ",
-  "                            g          ===                                 ~~              r      b          h                                   f                        ",
-  "      #######                  #######                                        ======                             #######                    uij                             ",
-  "                              #######        p                                      #####                                               y zv                          ",
-  "                 ~~                                #######                  ^^^^                        ======                                             #######          ",
-  "                 ==                      h                                                        #######       o                                  #######          ",
-  "         #######                 #######              ======                                       #######                           ^^^^^^                           ",
-  "                                                                 ######                  E                                #######                                     ",
-  "                      ==         ====                q                                 #####                                                                          ",
-  "                     ==     #######                                   #######                                ======                   >     f                   ",
-  "      t ##ttt   pp  ==                ###                   ######                                ####       X          E              l   s   d      D   n      ",
-  "   P    ##   ^^^   ==        #^^     ^^       ^^^     ==   ######    E    ^^        ^^^           ^^    ^^^^                                      S              ",
+  "                                                                                                                              ~                                              ",
+  "                            g                                                                                                               f                        ",
+  "      #######                  ####                                                                                                uij                             ",
+  "                              #####                                                                                           y zv                          ",
+  "                 ~~                                                                                                                                        #######          ",
+  "                 ==                                                                                                                                #######          ",
+  "         #######                 ## HHHHHHH                                                                                          ^^^^^^                           ",
+  "                                    HHHHHHH  HHHHH  HHHHHH                                                                    ###                                     ",
+  "                      ==         == HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH                                                                              ",
+  "                     ==     ####### HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH                                                 >     f                   ",
+  "      t ##ttt   pp  ==              HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH                                                  l   s   d      D   n      ",
+  "   P    ##   ^^^   ==        #^^    HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH                                                             S              ",
   "#####################@@@@####################################################@@@@@@@@@@@@######################################################################",
   "#####################@@@@#########################################################################################################################################",
   "##################################################################################################################################################################",
@@ -64,6 +68,38 @@ const DECORATION_BY_CHAR = Object.freeze({
   y: { sprite: "pipe_blue_tl", scale: 2 },
   z: { sprite: "pipe_blue_c", scale: 2 },
   v: { sprite: "pipe_blue_tr", scale: 2 },
+  A: { sprite: "tiny_roof_top_grey_left", scale: TINY_TOWN_TILE_SCALE },
+  B: { sprite: "tiny_roof_top_grey_center", scale: TINY_TOWN_TILE_SCALE },
+  C: { sprite: "tiny_roof_top_grey_right", scale: TINY_TOWN_TILE_SCALE },
+  F: { sprite: "tiny_roof_top_grey_chimney", scale: TINY_TOWN_TILE_SCALE },
+  G: { sprite: "tiny_roof_top_red_left", scale: TINY_TOWN_TILE_SCALE },
+  H: { sprite: "tiny_roof_top_red_center", scale: TINY_TOWN_TILE_SCALE },
+  I: { sprite: "tiny_roof_top_red_right", scale: TINY_TOWN_TILE_SCALE },
+  J: { sprite: "tiny_roof_top_red_chimney", scale: TINY_TOWN_TILE_SCALE },
+  K: { sprite: "tiny_roof_bottom_grey_left", scale: TINY_TOWN_TILE_SCALE },
+  L: { sprite: "tiny_roof_bottom_grey_center", scale: TINY_TOWN_TILE_SCALE },
+  M: { sprite: "tiny_roof_bottom_grey_right", scale: TINY_TOWN_TILE_SCALE },
+  N: { sprite: "tiny_roof_bottom_grey_dormer", scale: TINY_TOWN_TILE_SCALE },
+  O: { sprite: "tiny_roof_bottom_red_left", scale: TINY_TOWN_TILE_SCALE },
+  Q: { sprite: "tiny_roof_bottom_red_center", scale: TINY_TOWN_TILE_SCALE },
+  R: { sprite: "tiny_roof_bottom_red_right", scale: TINY_TOWN_TILE_SCALE },
+  T: { sprite: "tiny_roof_bottom_red_dormer", scale: TINY_TOWN_TILE_SCALE },
+  U: { sprite: "tiny_house_brown_wall_left", scale: TINY_TOWN_TILE_SCALE },
+  V: { sprite: "tiny_house_brown_wall_center", scale: TINY_TOWN_TILE_SCALE },
+  W: { sprite: "tiny_house_brown_door_open", scale: TINY_TOWN_TILE_SCALE },
+  Y: { sprite: "tiny_house_brown_wall_right", scale: TINY_TOWN_TILE_SCALE },
+  Z: { sprite: "tiny_house_gray_wall_left", scale: TINY_TOWN_TILE_SCALE },
+  0: { sprite: "tiny_house_gray_wall_center", scale: TINY_TOWN_TILE_SCALE },
+  1: { sprite: "tiny_house_gray_door_open", scale: TINY_TOWN_TILE_SCALE },
+  2: { sprite: "tiny_house_gray_wall_right", scale: TINY_TOWN_TILE_SCALE },
+  a: { sprite: "tiny_house_brown_window", scale: TINY_TOWN_TILE_SCALE },
+  e: { sprite: "tiny_house_brown_door_closed", scale: TINY_TOWN_TILE_SCALE },
+  m: { sprite: "tiny_house_brown_door_closed_right", scale: TINY_TOWN_TILE_SCALE },
+  w: { sprite: "tiny_house_brown_door_closed_left", scale: TINY_TOWN_TILE_SCALE },
+  k: { sprite: "tiny_house_gray_window", scale: TINY_TOWN_TILE_SCALE },
+  x: { sprite: "tiny_house_gray_door_closed", scale: TINY_TOWN_TILE_SCALE },
+  3: { sprite: "tiny_house_gray_door_closed_right", scale: TINY_TOWN_TILE_SCALE },
+  4: { sprite: "tiny_house_gray_door_closed_left", scale: TINY_TOWN_TILE_SCALE },
 });
 
 function normalizeAsciiMap(lines) {
@@ -77,6 +113,10 @@ function mapCharAt(mapLines, row, col) {
   return mapLines[row][col];
 }
 
+function isSolidTerrainChar(cell) {
+  return cell === "#" || HOUSE_TILE_CHARS.has(cell);
+}
+
 function buildTerrainColliderRects(mapLines) {
   const finalized = [];
   let active = new Map();
@@ -87,13 +127,13 @@ function buildTerrainColliderRects(mapLines) {
     let col = 0;
 
     while (col < line.length) {
-      if (line[col] !== "#") {
+      if (!isSolidTerrainChar(line[col])) {
         col += 1;
         continue;
       }
 
       const start = col;
-      while (col + 1 < line.length && line[col + 1] === "#") {
+      while (col + 1 < line.length && isSolidTerrainChar(line[col + 1])) {
         col += 1;
       }
       const end = col;
@@ -442,7 +482,7 @@ function addPatrolEnemy(
 
 export function buildLevelTwoAndria(k, options = {}) {
   const { isDialogOpen = () => false } = options;
-  const mapLines = normalizeAsciiMap(LEVEL_TWO_ASCII);
+  const mapLines = applyHouseAsciiMaps(normalizeAsciiMap(LEVEL_TWO_ASCII));
   const rows = mapLines.length;
   const cols = mapLines[0].length;
   const levelWidth = cols * GAME_CONFIG.tile;
@@ -463,7 +503,7 @@ export function buildLevelTwoAndria(k, options = {}) {
 
   function hasGroundAtWorld(worldX, worldY) {
     const cell = cellAtWorld(worldX, worldY);
-    return cell === "#" || cell === "~" || cell === "=";
+    return isSolidTerrainChar(cell) || cell === "~" || cell === "=";
   }
 
   function shouldEnemyTurn(enemy, direction, bbox) {

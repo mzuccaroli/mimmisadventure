@@ -1,14 +1,15 @@
 const ENV_TILE_ROOT = "sprites/kenney_pixel-platformer/Tiles";
+const TINY_TOWN_TILE_ROOT = "sprites/kenney_tiny-town/Tiles";
 
-function tilePath(index) {
-  return `${ENV_TILE_ROOT}/tile_${String(index).padStart(4, "0")}.png`;
+function tilePath(root, index) {
+  return `${root}/tile_${String(index).padStart(4, "0")}.png`;
 }
 
 function spriteId(tileName) {
   return `env_${tileName}`;
 }
 
-export const ENV_TILE_ORDER = Object.freeze({
+const BASE_ENV_TILE_ORDER = Object.freeze({
   grass_single: 0,
   grass_1: 1,
   grass_2: 2,
@@ -191,16 +192,104 @@ export const ENV_TILE_ORDER = Object.freeze({
   number_alt_9: 179,
 });
 
-export const ENV_TILE_SPRITES = Object.freeze(
-  Object.fromEntries(
-    Object.entries(ENV_TILE_ORDER).map(([tileName, tileIndex]) => [
+export const TINY_TOWN_TILE_ORDER = Object.freeze(
+  {
+    tiny_ground_top_left: 0,
+    tiny_ground_top_center: 1,
+    tiny_ground_top_right: 2,
+    tiny_ground_top_single: 3,
+    tiny_ground_mid_left: 12,
+    tiny_ground_mid_center: 13,
+    tiny_ground_mid_right: 14,
+    tiny_ground_mid_single: 15,
+    tiny_ground_bottom_left: 24,
+    tiny_ground_bottom_center: 25,
+    tiny_ground_bottom_right: 26,
+    tiny_ground_bottom_single: 27,
+    tiny_plants_top_1: 3,
+    tiny_plants_top_2: 4,
+    tiny_plants_top_3: 5,
+    tiny_plants_top_4: 6,
+    tiny_plants_top_5: 7,
+    tiny_plants_top_6: 8,
+    tiny_plants_top_7: 9,
+    tiny_plants_top_8: 10,
+    tiny_plants_top_9: 11,
+    tiny_plants_mid_1: 15,
+    tiny_plants_mid_2: 16,
+    tiny_plants_mid_3: 17,
+    tiny_plants_mid_4: 18,
+    tiny_plants_mid_5: 19,
+    tiny_plants_mid_6: 20,
+    tiny_plants_mid_7: 21,
+    tiny_plants_mid_8: 22,
+    tiny_plants_mid_9: 23,
+    tiny_plants_bottom_1: 27,
+    tiny_plants_bottom_2: 28,
+    tiny_plants_bottom_3: 29,
+    tiny_plants_bottom_4: 30,
+    tiny_plants_bottom_5: 31,
+    tiny_plants_bottom_6: 32,
+    tiny_plants_bottom_7: 33,
+    tiny_plants_bottom_8: 34,
+    tiny_plants_bottom_9: 35,
+    tiny_roof_top_grey_left: 48,
+    tiny_roof_top_grey_center: 49,
+    tiny_roof_top_grey_right: 50,
+    tiny_roof_top_grey_chimney: 51,
+    tiny_roof_top_red_left: 52,
+    tiny_roof_top_red_center: 53,
+    tiny_roof_top_red_right: 54,
+    tiny_roof_top_red_chimney: 55,
+    tiny_roof_bottom_grey_left: 60,
+    tiny_roof_bottom_grey_center: 61,
+    tiny_roof_bottom_grey_right: 62,
+    tiny_roof_bottom_grey_dormer: 63,
+    tiny_roof_bottom_red_left: 64,
+    tiny_roof_bottom_red_center: 65,
+    tiny_roof_bottom_red_right: 66,
+    tiny_roof_bottom_red_dormer: 67,
+    tiny_house_brown_wall_left: 72,
+    tiny_house_brown_wall_center: 73,
+    tiny_house_brown_door_open: 74,
+    tiny_house_brown_wall_right: 75,
+    tiny_house_gray_wall_left: 76,
+    tiny_house_gray_wall_center: 77,
+    tiny_house_gray_door_open: 78,
+    tiny_house_gray_wall_right: 79,
+    tiny_house_brown_window: 84,
+    tiny_house_brown_door_closed: 85,
+    tiny_house_brown_door_closed_right: 86,
+    tiny_house_brown_door_closed_left: 87,
+    tiny_house_gray_window: 88,
+    tiny_house_gray_door_closed: 89,
+    tiny_house_gray_door_closed_right: 90,
+    tiny_house_gray_door_closed_left: 91,
+  },
+);
+
+export const ENV_TILE_ORDER = Object.freeze({
+  ...BASE_ENV_TILE_ORDER,
+  ...TINY_TOWN_TILE_ORDER,
+});
+
+function createSpriteEntries(tileOrder, root) {
+  return Object.fromEntries(
+    Object.entries(tileOrder).map(([tileName, tileIndex]) => [
       tileName,
       {
         sprite: spriteId(tileName),
-        path: tilePath(tileIndex),
+        path: tilePath(root, tileIndex),
       },
     ]),
-  ),
+  );
+}
+
+export const ENV_TILE_SPRITES = Object.freeze(
+  {
+    ...createSpriteEntries(BASE_ENV_TILE_ORDER, ENV_TILE_ROOT),
+    ...createSpriteEntries(TINY_TOWN_TILE_ORDER, TINY_TOWN_TILE_ROOT),
+  },
 );
 
 export function loadEnvironmentTileAssets(k) {
