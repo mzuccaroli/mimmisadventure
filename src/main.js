@@ -5,8 +5,8 @@ import { setupLivesSystem } from "./lives.js";
 import {
   getLevelOneGoalDialogPages,
   getLevelOneSignDialogPages,
-} from "./levels/levelOneDialogs.js";
-import { buildLevelOne } from "./levels/levelOne.js";
+} from "./levels/1_intro/dialogs.js";
+import { buildLevelOne } from "./levels/1_intro/level.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
 import { loadEnemyTileAssets } from "./enemyTiles.js";
 import { loadEnvironmentTileAssets } from "./environmentTiles.js";

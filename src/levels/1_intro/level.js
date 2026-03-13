@@ -1,6 +1,6 @@
-import { GAME_CONFIG, TAGS } from "../tiles.js";
-import { getEnemySpriteFrames } from "../enemyTiles.js";
-import { getEnvironmentTileSprite } from "../environmentTiles.js";
+import { GAME_CONFIG, TAGS } from "../../tiles.js";
+import { getEnemySpriteFrames } from "../../enemyTiles.js";
+import { getEnvironmentTileSprite } from "../../environmentTiles.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
@@ -18,7 +18,7 @@ const LEVEL_ONE_ASCII = [
   "                                                                                                                         ",
   "                           #######                                      #######                                          ",
   "        ##                         ###          ######                                                                   ",
-  "   P  s ##     #        ###                     ######                                  ####        E               d  S ",
+  "   P  s ##     #        ###                     ######                                  ####        E               S   d",
   "        ##  ^^^#        #^^   ^^      ^^^    ^^ ######    E   ^^     ^^^    X  ^^   ^^^^                                 ",
   "##########################################################################################################################",
   "##########################################################################################################################",
