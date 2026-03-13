@@ -1,5 +1,6 @@
 {
 	"name": "mimmisAdventure",
+	"license": "CC-BY-4.0",
 	"type": "module",
 	"scripts": {
 		"build": "vite build",
