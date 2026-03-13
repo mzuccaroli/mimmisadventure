@@ -3,10 +3,10 @@ import { loadBackgroundTileAssets } from "./backgroundTiles.js";
 import { createDialogSystem } from "./dialogUI.js";
 import { setupLivesSystem } from "./lives.js";
 import {
-  getLevelOneGoalDialogPages,
-  getLevelOneSignDialogPages,
-} from "./levels/1_intro/dialogs.js";
-import { buildLevelOne } from "./levels/1_intro/level.js";
+  getLevelTwoGoalDialogPages,
+  getLevelTwoSignDialogPages,
+} from "./levels/2_andria/dialogs.js";
+import { buildLevelTwoAndria } from "./levels/2_andria/level.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
 import { loadEnemyTileAssets } from "./enemyTiles.js";
 import { loadEnvironmentTileAssets } from "./environmentTiles.js";
@@ -25,7 +25,7 @@ k.setGravity(1800);
 let dialogOpen = false;
 let goalSequenceActive = false;
 
-const level = buildLevelOne(k, {
+const level = buildLevelTwoAndria(k, {
   isDialogOpen: () => dialogOpen || goalSequenceActive,
 });
 const player = createPlayer(k, level.playerStart, GAME_CONFIG.jumpForce);
@@ -217,7 +217,7 @@ function playGoalCelebrationThenDialog() {
       celebrationCtrl.cancel();
       player.vel = k.vec2(0, 0);
       player.frame = 5;
-      openDialogWithLock(getLevelOneGoalDialogPages());
+      openDialogWithLock(getLevelTwoGoalDialogPages());
     }
   });
 }
@@ -229,7 +229,7 @@ player.onCollide(TAGS.dialogTrigger, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
   if (reachedDialogTrigger) return;
   reachedDialogTrigger = true;
-  openDialogWithLock(getLevelOneSignDialogPages());
+  openDialogWithLock(getLevelTwoSignDialogPages());
 });
 
 player.onCollide(TAGS.goal, () => {
