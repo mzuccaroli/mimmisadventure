@@ -14,7 +14,7 @@ export const ENEMY_ANIMATIONS = Object.freeze({
   alien_3: [4, 5],
   alien_4: [6, 7],
   bomb: [8],
-  "alien-5": [9, 10],
+  alien_5: [9, 10],
   gold_block: [11, 12],
   scrissors: [13, 14],
   spike: [15, 16, 17],
