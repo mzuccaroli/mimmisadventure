@@ -12,6 +12,13 @@ export const GAME_CONFIG = {
   damageCooldown: 0.7,
 };
 
+export const DEBUG_CONFIG = {
+  enabled: true,
+  defaultLevelId: "2",
+  flySpeed: 900,
+  levelStorageKey: "mimmi_debug_level_id",
+};
+
 export const TAGS = {
   goal: "goal",
   hazard: "hazard",

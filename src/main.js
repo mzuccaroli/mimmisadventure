@@ -3,6 +3,11 @@ import { loadBackgroundTileAssets } from "./backgroundTiles.js";
 import { createDialogSystem } from "./dialogUI.js";
 import { setupLivesSystem } from "./lives.js";
 import {
+  getLevelOneGoalDialogPages,
+  getLevelOneSignDialogPages,
+} from "./levels/1_intro/dialogs.js";
+import { buildLevelOne } from "./levels/1_intro/level.js";
+import {
   getLevelTwoGoalDialogPages,
   getLevelTwoSignDialogPages,
 } from "./levels/2_andria/dialogs.js";
@@ -11,7 +16,43 @@ import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
 import { loadEnemyTileAssets } from "./enemyTiles.js";
 import { loadEnvironmentTileAssets } from "./environmentTiles.js";
 import { loadServiceTiles } from "./serviceTiles.js";
-import { GAME_CONFIG, TAGS, loadTileAssets } from "./tiles.js";
+import { DEBUG_CONFIG, GAME_CONFIG, TAGS, loadTileAssets } from "./tiles.js";
+
+const LEVEL_DEFINITIONS = Object.freeze({
+  1: {
+    buildLevel: buildLevelOne,
+    getGoalDialogPages: getLevelOneGoalDialogPages,
+    getSignDialogPages: getLevelOneSignDialogPages,
+  },
+  2: {
+    buildLevel: buildLevelTwoAndria,
+    getGoalDialogPages: getLevelTwoGoalDialogPages,
+    getSignDialogPages: getLevelTwoSignDialogPages,
+  },
+});
+
+function getConfiguredLevelId() {
+  if (!DEBUG_CONFIG.enabled) {
+    return DEBUG_CONFIG.defaultLevelId;
+  }
+
+  try {
+    return (
+      window.localStorage.getItem(DEBUG_CONFIG.levelStorageKey) ??
+      DEBUG_CONFIG.defaultLevelId
+    );
+  } catch {
+    return DEBUG_CONFIG.defaultLevelId;
+  }
+}
+
+function setConfiguredLevelId(levelId) {
+  try {
+    window.localStorage.setItem(DEBUG_CONFIG.levelStorageKey, levelId);
+  } catch {
+    // Ignore localStorage failures in dev helpers.
+  }
+}
 
 const k = kaplay();
 
@@ -24,8 +65,17 @@ k.setGravity(1800);
 
 let dialogOpen = false;
 let goalSequenceActive = false;
+let debugFlyActive = false;
 
-const level = buildLevelTwoAndria(k, {
+const currentLevelId = getConfiguredLevelId();
+const currentLevelDefinition =
+  LEVEL_DEFINITIONS[currentLevelId] ?? LEVEL_DEFINITIONS[DEBUG_CONFIG.defaultLevelId];
+
+if (!currentLevelDefinition) {
+  throw new Error(`Livello "${currentLevelId}" non configurato.`);
+}
+
+const level = currentLevelDefinition.buildLevel(k, {
   isDialogOpen: () => dialogOpen || goalSequenceActive,
 });
 const player = createPlayer(k, level.playerStart, GAME_CONFIG.jumpForce);
@@ -110,11 +160,28 @@ const lives = setupLivesSystem(k, player, {
   damageCooldown: GAME_CONFIG.damageCooldown,
   respawnPos: level.playerStart,
 });
+const pipeTraversal =
+  typeof level.setupPipeTraversal === "function"
+    ? level.setupPipeTraversal(player, {
+        isGameOver: lives.isGameOver,
+        isRespawning: lives.isRespawning,
+        isDialogOpen: () => dialogOpen || goalSequenceActive,
+      })
+    : {
+        isPipeTraveling: () => false,
+        cancelTravel: () => {},
+      };
+
+function isDebugFlying() {
+  return DEBUG_CONFIG.enabled && debugFlyActive;
+}
 
 ["space", "w", "up"].forEach((key) => {
   k.onKeyPress(key, () => {
     if (firstJumpTriggered) return;
     if (dialogOpen || goalSequenceActive) return;
+    if (isDebugFlying()) return;
+    if (pipeTraversal.isPipeTraveling()) return;
     if (lives.isGameOver() || lives.isRespawning()) return;
     if (!player.isGrounded()) return;
 
@@ -125,11 +192,43 @@ const lives = setupLivesSystem(k, player, {
 
 k.onKeyPress("h", () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+  if (isDebugFlying()) return;
+  if (pipeTraversal.isPipeTraveling()) return;
   playHelpVisibilityCycle(5);
 });
 
+if (DEBUG_CONFIG.enabled) {
+  k.onKeyPress("d", () => {
+    if (!k.isKeyDown("ctrl") && !k.isKeyDown("control")) return;
+    if (lives.isGameOver()) return;
+
+    debugFlyActive = !debugFlyActive;
+    pipeTraversal.cancelTravel();
+    player.opacity = 1;
+    player.vel = k.vec2(0, 0);
+
+    if (debugFlyActive) {
+      dialogOpen = false;
+      goalSequenceActive = false;
+      player.isStatic = true;
+      freezeEnemies();
+    } else if (!dialogOpen && !goalSequenceActive) {
+      player.isStatic = false;
+      unfreezeEnemies();
+    }
+  });
+
+  Object.keys(LEVEL_DEFINITIONS).forEach((levelId) => {
+    k.onKeyPress(levelId, () => {
+      setConfiguredLevelId(levelId);
+      window.location.reload();
+    });
+  });
+}
+
 setupPlayerMovement(k, player, {
   playerSpeed: GAME_CONFIG.playerSpeed,
+  debugFlySpeed: DEBUG_CONFIG.flySpeed,
   playerStart: level.playerStart,
   levelWidth: level.levelWidth,
   cameraZoom: GAME_CONFIG.cameraZoom,
@@ -137,6 +236,8 @@ setupPlayerMovement(k, player, {
   isGameOver: lives.isGameOver,
   isRespawning: lives.isRespawning,
   isDialogOpen: () => dialogOpen || goalSequenceActive,
+  isPipeTraveling: pipeTraversal.isPipeTraveling,
+  isDebugFlying,
 });
 
 function freezeEnemies() {
@@ -147,6 +248,7 @@ function freezeEnemies() {
 }
 
 function unfreezeEnemies() {
+  if (isDebugFlying()) return;
   for (const enemy of k.get("enemy")) {
     enemy.isStatic = false;
   }
@@ -179,7 +281,7 @@ function openDialogWithLock(pages) {
 }
 
 function playGoalCelebrationThenDialog() {
-  if (dialogOpen || goalSequenceActive) return;
+  if (dialogOpen || goalSequenceActive || isDebugFlying()) return;
 
   goalSequenceActive = true;
   freezeEnemies();
@@ -217,7 +319,7 @@ function playGoalCelebrationThenDialog() {
       celebrationCtrl.cancel();
       player.vel = k.vec2(0, 0);
       player.frame = 5;
-      openDialogWithLock(getLevelTwoGoalDialogPages());
+      openDialogWithLock(currentLevelDefinition.getGoalDialogPages());
     }
   });
 }
@@ -227,13 +329,17 @@ let reachedGoal = false;
 
 player.onCollide(TAGS.dialogTrigger, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+  if (isDebugFlying()) return;
+  if (pipeTraversal.isPipeTraveling()) return;
   if (reachedDialogTrigger) return;
   reachedDialogTrigger = true;
-  openDialogWithLock(getLevelTwoSignDialogPages());
+  openDialogWithLock(currentLevelDefinition.getSignDialogPages());
 });
 
 player.onCollide(TAGS.goal, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+  if (isDebugFlying()) return;
+  if (pipeTraversal.isPipeTraveling()) return;
   if (reachedGoal) return;
   reachedGoal = true;
   playGoalCelebrationThenDialog();
@@ -241,5 +347,7 @@ player.onCollide(TAGS.goal, () => {
 
 player.onCollide(TAGS.hazard, () => {
   if (dialogOpen || goalSequenceActive) return;
+  if (isDebugFlying()) return;
+  if (pipeTraversal.isPipeTraveling()) return;
   lives.damagePlayer();
 });

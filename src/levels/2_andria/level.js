@@ -7,28 +7,96 @@ const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
 const TINY_TOWN_TILE_SCALE = GAME_CONFIG.tile / 16;
+const PIPE_TILE_SCALE = GAME_CONFIG.tile / 16;
 const HOUSE_TILE_CHARS = new Set("ABCFGHIJKLMNOQRTUVWYZ012aemwkx34".split(""));
+const PIPE_TRAVEL_SPEED = GAME_CONFIG.tile * 7;
+const PIPE_ENDPOINT_CHARS = new Set(["u", "j", "z", "!"]);
+const PIPE_CHARS = new Set(["u", "i", "j", "y", "v", "[", "]", "z", "|", "!"]);
+const PIPE_CONNECTIONS = Object.freeze({
+  u: ["right"],
+  i: ["left", "right"],
+  j: ["left"],
+  y: ["right", "down"],
+  v: ["left", "down"],
+  "[": ["right", "up"],
+  "]": ["left", "up"],
+  z: ["down"],
+  "|": ["up", "down"],
+  "!": ["up"],
+});
+const DIRECTION_DELTAS = Object.freeze({
+  left: { row: 0, col: -1 },
+  right: { row: 0, col: 1 },
+  up: { row: -1, col: 0 },
+  down: { row: 1, col: 0 },
+});
+const OPPOSITE_DIRECTION = Object.freeze({
+  left: "right",
+  right: "left",
+  up: "down",
+  down: "up",
+});
+const ENEMY_BY_CHAR = Object.freeze({
+  E: {
+    patrolWidth: GAME_CONFIG.tile * 10,
+    speed: 95,
+    enemyName: "alien_1",
+    animationSpeed: 8,
+    ignoreHazards: false,
+  },
+  X: {
+    patrolWidth: GAME_CONFIG.tile * 8,
+    speed: 80,
+    enemyName: "spike",
+    animationSpeed: 8,
+    ignoreHazards: true,
+  },
+  5: {
+    patrolWidth: GAME_CONFIG.tile * 8,
+    speed: 88,
+    enemyName: "alien_3",
+    animationSpeed: 7,
+    ignoreHazards: false,
+  },
+  6: {
+    patrolWidth: GAME_CONFIG.tile * 9,
+    speed: 78,
+    enemyName: "alien_4",
+    animationSpeed: 7,
+    ignoreHazards: false,
+    randomJump: {
+      minInterval: 0.9,
+      maxInterval: 2.1,
+      chance: 0.65,
+      jumpForce: GAME_CONFIG.jumpForce * 0.78,
+    },
+  },
+  7: {
+    patrolWidth: GAME_CONFIG.tile * 11,
+    speed: 92,
+    enemyName: "robot",
+    animationSpeed: 8,
+    ignoreHazards: false,
+  },
+});
 
 // House blocks use rectangles of H and are expanded through houseAsciiMaps.
 const LEVEL_TWO_ASCII = [
-  "                                                                                                                              ~                                              ",
-  "                            g                                                                                                                     GGGGGGG                 f              ",
-  "      #######                  ####                                                                                                uij            GGGGGGG                                ",
-  "                              #####                                                                                           y zv        GGGGGG  GGGGGGG                                ",
-  "                 ~~                                                                                                                       GGGGGG  GGGGGGG                                ",
-  "                 ==                                                                                                                       GGGGGG  GGGGGGG                                ",
-  "         #######                 ## HHHHHHH                                                                                          ^^^  GGGGGG  GGGGGGG                                ",
-  "                                    HHHHHHH  HHHHH  HHHHHH                                        GGGGGG                      ###         GGGGGG  GGGGGGG                                ",
-  "                      ==         == HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH          GGGGGG  RRRRR  GGGG                     GGGGGG  GGGGGGG                                ",
-  "                     ==     ####### HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH          GGGGGG  RRRRR  GGGG                     GGGGGG  GGGGGGG               >     f          ",
-  "      t ##ttt   pp  ==              HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH          GGGGGG  RRRRR  GGGG                     GGGGGG  GGGGGGG              l   s   d      D   n",
-  "   P    ##   ^^^   ==        #^^    HHHHHHH  HHHHH  HHHHHH  HHHH  HHHHH  HHHHHH  HHHHHHH          GGGGGG  RRRRR  GGGG                                                             S      ",
-  "#####################@@@@####################################################@@@@@@@@@@@@######################################################################",
-  "#####################@@@@#########################################################################################################################################",
-  "##################################################################################################################################################################",
-  "##################################################################################################################################################################",
-  "##################################################################################################################################################################",
-  "##################################################################################################################################################################",
+  "          5                                              h                                 h",
+  "      #######                                            r                                         GGGGGGG",
+  "                              ####                                                                 GGGGGGG",
+  "                       ~~                                         GGGGGG                           GGGGGGG",
+  "                 ==                                               GGGGGG                           GGGGGGG",
+  "         #######                                                  GGGGGG          HHHHHHH          GGGGGGG",
+  "                                    RRRR                          GGGGGG          HHHHHHH     E    GGGGGGG                 RRRRRR",
+  "                        HHHH        RRRRz         HHHHHH     X    GGGGGG          HHHHHHH          GGGGGGG                 RRRRRR    GGGG",
+  "                        HHHH        RRRR|         HHHHHH          GGGGGG     6    HHHHHHH          GGGGGGG                 RRRRRR    GGGG",
+  "                        HHHH        RRRR|         HHHHHH          GGGGGG          HHHHHHH          GGGGGGG      7       z  RRRRRR    GGGG      >     f",
+  "   P         ^^^  ==    HHHH       #####|#        HHHHHH          GGGGGG          HHHHHHH          GGGGGGG              |  RRRRRR    GGGG   l   s   d      D    n     S",
+  "######################@@@@@@@@@@@@@@@@##|@@@@@@@@###@@@@@@@@###@@@@@@@@@###@@@@@@@@@###@@@@@@@@###@@@@@@################|##############################",
+  "######################@@@@@@@@@@@@@@@@##[iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii]##############################",
+  "#############################################################################################################################################################################",
+  "#############################################################################################################################################################################",
 ];
 
 const TERRAIN_TOP_TILES_NO_SUPPORT = {
@@ -62,12 +130,16 @@ const DECORATION_BY_CHAR = Object.freeze({
   l: { sprite: "lever_1", scale: 2 },
   r: { sprite: "rope_1", scale: 2 },
   h: { sprite: "hook", scale: 2 },
-  u: { sprite: "pipe_orange_l", scale: 2 },
-  i: { sprite: "pipe_orange_c", scale: 2 },
-  j: { sprite: "pipe_orange_r", scale: 2 },
-  y: { sprite: "pipe_blue_tl", scale: 2 },
-  z: { sprite: "pipe_blue_c", scale: 2 },
-  v: { sprite: "pipe_blue_tr", scale: 2 },
+  u: { sprite: "pipe_blue_horizontal_start", scale: PIPE_TILE_SCALE },
+  i: { sprite: "pipe_blue_horizontal_center", scale: PIPE_TILE_SCALE },
+  j: { sprite: "pipe_blue_horizontal_end", scale: PIPE_TILE_SCALE },
+  y: { sprite: "pipe_blue_corner_tl", scale: PIPE_TILE_SCALE },
+  z: { sprite: "pipe_blue_vertical_start", scale: PIPE_TILE_SCALE },
+  v: { sprite: "pipe_blue_corner_tr", scale: PIPE_TILE_SCALE },
+  "[": { sprite: "pipe_blue_corner_bl", scale: PIPE_TILE_SCALE },
+  "]": { sprite: "pipe_blue_corner_br", scale: PIPE_TILE_SCALE },
+  "|": { sprite: "pipe_blue_vertical_center", scale: PIPE_TILE_SCALE },
+  "!": { sprite: "pipe_blue_vertical_end", scale: PIPE_TILE_SCALE },
   A: { sprite: "tiny_roof_top_grey_left", scale: TINY_TOWN_TILE_SCALE },
   B: { sprite: "tiny_roof_top_grey_center", scale: TINY_TOWN_TILE_SCALE },
   C: { sprite: "tiny_roof_top_grey_right", scale: TINY_TOWN_TILE_SCALE },
@@ -101,6 +173,171 @@ const DECORATION_BY_CHAR = Object.freeze({
   3: { sprite: "tiny_house_gray_door_closed_right", scale: TINY_TOWN_TILE_SCALE },
   4: { sprite: "tiny_house_gray_door_closed_left", scale: TINY_TOWN_TILE_SCALE },
 });
+
+function pipeCellKey(row, col) {
+  return `${row}:${col}`;
+}
+
+function isPipeChar(cell) {
+  return PIPE_CHARS.has(cell);
+}
+
+function isPipeEndpoint(cell) {
+  return PIPE_ENDPOINT_CHARS.has(cell);
+}
+
+function getPipeConnections(cell) {
+  return PIPE_CONNECTIONS[cell] ?? [];
+}
+
+function getPipeOpenDirection(cell) {
+  const connections = getPipeConnections(cell);
+  if (connections.length !== 1) return null;
+  return OPPOSITE_DIRECTION[connections[0]];
+}
+
+function isOpenPipeEntryCell(mapLines, row, col) {
+  const cell = mapCharAt(mapLines, row, col);
+  if (!isPipeEndpoint(cell)) return false;
+
+  const openDirection = getPipeOpenDirection(cell);
+  if (!openDirection) return false;
+
+  const delta = DIRECTION_DELTAS[openDirection];
+  const openNeighbor = mapCharAt(mapLines, row + delta.row, col + delta.col);
+  return !isPipeChar(openNeighbor);
+}
+
+function getConnectedPipeNeighbors(mapLines, row, col) {
+  const cell = mapCharAt(mapLines, row, col);
+  if (!isPipeChar(cell)) return [];
+
+  return getPipeConnections(cell)
+    .map((direction) => {
+      const delta = DIRECTION_DELTAS[direction];
+      const nextRow = row + delta.row;
+      const nextCol = col + delta.col;
+      const nextCell = mapCharAt(mapLines, nextRow, nextCol);
+      if (!isPipeChar(nextCell)) return null;
+      if (!getPipeConnections(nextCell).includes(OPPOSITE_DIRECTION[direction])) {
+        return null;
+      }
+
+      return {
+        row: nextRow,
+        col: nextCol,
+        direction,
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildPipeRoutes(mapLines) {
+  const routesByEntry = new Map();
+
+  for (let row = 0; row < mapLines.length; row++) {
+    for (let col = 0; col < mapLines[row].length; col++) {
+      const cell = mapLines[row][col];
+      const startKey = pipeCellKey(row, col);
+
+      if (!isPipeEndpoint(cell) || routesByEntry.has(startKey)) {
+        continue;
+      }
+
+      const path = [{ row, col }];
+      let previous = null;
+      let current = { row, col };
+
+      while (true) {
+        const nextCandidates = getConnectedPipeNeighbors(
+          mapLines,
+          current.row,
+          current.col,
+        ).filter(
+          ({ row: nextRow, col: nextCol }) =>
+            !previous || nextRow !== previous.row || nextCol !== previous.col,
+        );
+
+        if (previous && isPipeEndpoint(mapCharAt(mapLines, current.row, current.col))) {
+          break;
+        }
+
+        if (nextCandidates.length !== 1) {
+          break;
+        }
+
+        previous = current;
+        current = {
+          row: nextCandidates[0].row,
+          col: nextCandidates[0].col,
+        };
+        path.push(current);
+
+        if (path.length > mapLines.length * mapLines[0].length) {
+          break;
+        }
+      }
+
+      if (path.length < 2) continue;
+
+      const end = path[path.length - 1];
+      const endCell = mapCharAt(mapLines, end.row, end.col);
+      if (!isPipeEndpoint(endCell)) continue;
+
+      const endKey = pipeCellKey(end.row, end.col);
+      routesByEntry.set(startKey, path);
+      routesByEntry.set(endKey, [...path].reverse());
+    }
+  }
+
+  return routesByEntry;
+}
+
+function getPipeEntryTrigger(mapLines, entryKey, mapOffsetY) {
+  const [row, col] = entryKey.split(":").map(Number);
+  const cell = mapCharAt(mapLines, row, col);
+  const openDirection = getPipeOpenDirection(cell);
+
+  if (!openDirection) return null;
+
+  const tileX = col * GAME_CONFIG.tile;
+  const tileY = mapOffsetY + row * GAME_CONFIG.tile;
+  const half = GAME_CONFIG.tile / 2;
+
+  if (openDirection === "left") {
+    return {
+      x: tileX,
+      y: tileY,
+      width: half,
+      height: GAME_CONFIG.tile,
+    };
+  }
+
+  if (openDirection === "right") {
+    return {
+      x: tileX + half,
+      y: tileY,
+      width: half,
+      height: GAME_CONFIG.tile,
+    };
+  }
+
+  if (openDirection === "up") {
+    return {
+      x: tileX,
+      y: tileY,
+      width: GAME_CONFIG.tile,
+      height: half,
+    };
+  }
+
+  return {
+    x: tileX,
+    y: tileY + half,
+    width: GAME_CONFIG.tile,
+    height: half,
+  };
+}
 
 function normalizeAsciiMap(lines) {
   const cols = Math.max(...lines.map((line) => line.length));
@@ -384,14 +621,23 @@ function addPatrolEnemy(
   shouldTurn = null,
   ignoreHazards = false,
   isDialogOpen = () => false,
+  randomJump = null,
 ) {
   const animationFrames = getEnemySpriteFrames(enemyName);
+  const jumpSettings = randomJump
+    ? {
+        minInterval: randomJump.minInterval ?? 1,
+        maxInterval: randomJump.maxInterval ?? 2,
+        chance: randomJump.chance ?? 0.5,
+        jumpForce: randomJump.jumpForce ?? GAME_CONFIG.jumpForce * 0.75,
+      }
+    : null;
   const enemy = k.add([
     k.pos(x, y),
     k.sprite(animationFrames[0]),
     k.scale(1.5),
     k.area(ignoreHazards ? { collisionIgnore: [TAGS.hazard] } : undefined),
-    k.body(),
+    k.body(jumpSettings ? { jumpForce: jumpSettings.jumpForce } : {}),
     k.z(4),
     TAGS.hazard,
     "enemy",
@@ -403,6 +649,10 @@ function addPatrolEnemy(
   let animationTimer = 0;
   let frameIndex = 0;
   let turnCooldown = 0;
+  let jumpTimer = jumpSettings
+    ? jumpSettings.minInterval +
+      Math.random() * (jumpSettings.maxInterval - jumpSettings.minInterval)
+    : 0;
 
   enemy.onCollide(TERRAIN_TAG, (_, col) => {
     if (turnCooldown > 0) return;
@@ -437,6 +687,17 @@ function addPatrolEnemy(
     }
 
     turnCooldown = Math.max(0, turnCooldown - k.dt());
+    if (jumpSettings) {
+      jumpTimer -= k.dt();
+      if (jumpTimer <= 0) {
+        if (enemy.isGrounded() && Math.random() <= jumpSettings.chance) {
+          enemy.jump();
+        }
+        jumpTimer =
+          jumpSettings.minInterval +
+          Math.random() * (jumpSettings.maxInterval - jumpSettings.minInterval);
+      }
+    }
     const bbox = enemy.worldArea().bbox();
 
     if (
@@ -483,6 +744,7 @@ function addPatrolEnemy(
 export function buildLevelTwoAndria(k, options = {}) {
   const { isDialogOpen = () => false } = options;
   const mapLines = applyHouseAsciiMaps(normalizeAsciiMap(LEVEL_TWO_ASCII));
+  const pipeRoutes = buildPipeRoutes(mapLines);
   const rows = mapLines.length;
   const cols = mapLines[0].length;
   const levelWidth = cols * GAME_CONFIG.tile;
@@ -494,6 +756,250 @@ export function buildLevelTwoAndria(k, options = {}) {
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
+
+  function getPipeTileCenter(row, col) {
+    return k.vec2(
+      col * GAME_CONFIG.tile + GAME_CONFIG.tile / 2,
+      mapOffsetY + row * GAME_CONFIG.tile + GAME_CONFIG.tile / 2,
+    );
+  }
+
+  function getPlayerBoxSize(player) {
+    const bbox = player.worldArea().bbox();
+    return {
+      width: bbox.width,
+      height: bbox.height,
+    };
+  }
+
+  function centerPlayerAt(player, point) {
+    const { width, height } = getPlayerBoxSize(player);
+    player.pos = k.vec2(point.x - width / 2, point.y - height / 2);
+  }
+
+  function getPipeExitPoint(player, endpoint) {
+    const exitPoint = getPipeTileCenter(endpoint.row, endpoint.col);
+    const previous = endpoint.previous;
+
+    if (!previous) {
+      return exitPoint;
+    }
+
+    const interiorDirection =
+      previous.row < endpoint.row
+        ? "up"
+        : previous.row > endpoint.row
+          ? "down"
+          : previous.col < endpoint.col
+            ? "left"
+            : "right";
+    const exteriorDirection = OPPOSITE_DIRECTION[interiorDirection];
+    const delta = DIRECTION_DELTAS[exteriorDirection];
+    const offset = GAME_CONFIG.tile * 0.85;
+
+    return k.vec2(
+      exitPoint.x + delta.col * offset,
+      exitPoint.y + delta.row * offset,
+    );
+  }
+
+  function getDirectionBetweenPoints(fromPoint, toPoint) {
+    if (toPoint.x > fromPoint.x) return "right";
+    if (toPoint.x < fromPoint.x) return "left";
+    if (toPoint.y > fromPoint.y) return "down";
+    return "up";
+  }
+
+  function interpolatePipePoint(points, position) {
+    const maxIndex = points.length - 1;
+    const clamped = k.clamp(position, 0, maxIndex);
+    const lowerIndex = Math.floor(clamped);
+    const upperIndex = Math.ceil(clamped);
+
+    if (lowerIndex === upperIndex) {
+      return points[lowerIndex];
+    }
+
+    const startPoint = points[lowerIndex];
+    const endPoint = points[upperIndex];
+    const ratio = clamped - lowerIndex;
+
+    return k.vec2(
+      startPoint.x + (endPoint.x - startPoint.x) * ratio,
+      startPoint.y + (endPoint.y - startPoint.y) * ratio,
+    );
+  }
+
+  function setupPipeTraversal(player, traversalOptions = {}) {
+    const {
+      isGameOver = () => false,
+      isRespawning = () => false,
+      isDialogOpen: isPipeDialogOpen = () => false,
+    } = traversalOptions;
+
+    let activeTravel = null;
+    const reentryCooldownUntil = new Map();
+
+    function isPipeTraveling() {
+      return activeTravel !== null;
+    }
+
+    function canEnterPipe(entryKey) {
+      return (reentryCooldownUntil.get(entryKey) ?? 0) <= k.time();
+    }
+
+    function finishTravel(exitIndex) {
+      if (!activeTravel) return;
+
+      const route = activeTravel.route;
+      const exitCell = route[exitIndex];
+      const previousCell =
+        exitIndex === 0
+          ? route.length > 1
+            ? route[1]
+            : null
+          : route[exitIndex - 1] ?? null;
+      const exitPoint = getPipeExitPoint(player, {
+        ...exitCell,
+        previous: previousCell,
+      });
+
+      centerPlayerAt(player, exitPoint);
+      player.opacity = 1;
+      player.isStatic = false;
+      player.vel = k.vec2(0, 0);
+      player.frame = 5;
+
+      reentryCooldownUntil.set(pipeCellKey(exitCell.row, exitCell.col), k.time() + 0.35);
+      activeTravel = null;
+    }
+
+    function cancelTravel() {
+      if (!activeTravel) return;
+      player.opacity = 1;
+      player.isStatic = false;
+      player.vel = k.vec2(0, 0);
+      activeTravel = null;
+    }
+
+    function startTravel(entryKey) {
+      if (isGameOver() || isRespawning() || isPipeDialogOpen() || activeTravel) return;
+      if (!canEnterPipe(entryKey)) return;
+
+      const route = pipeRoutes.get(entryKey);
+      if (!route || route.length < 2) return;
+
+      const points = route.map(({ row, col }) => getPipeTileCenter(row, col));
+      activeTravel = {
+        route,
+        points,
+        position: 0,
+      };
+
+      player.stop();
+      player.vel = k.vec2(0, 0);
+      player.isStatic = true;
+      player.opacity = 0;
+      centerPlayerAt(player, points[0]);
+    }
+
+    player.onCollide("pipeEntry", (entry) => {
+      if (!entry?.pipeEntryKey) return;
+      startTravel(entry.pipeEntryKey);
+    });
+
+    player.onUpdate(() => {
+      if (!activeTravel) return;
+
+      if (isGameOver() || isRespawning() || isPipeDialogOpen()) {
+        cancelTravel();
+        return;
+      }
+
+      const pressedDirections = new Set();
+      if (k.isKeyDown("left") || k.isKeyDown("a")) pressedDirections.add("left");
+      if (k.isKeyDown("right") || k.isKeyDown("d")) pressedDirections.add("right");
+      if (k.isKeyDown("up") || k.isKeyDown("w")) pressedDirections.add("up");
+      if (k.isKeyDown("down") || k.isKeyDown("s")) pressedDirections.add("down");
+
+      const maxPosition = activeTravel.points.length - 1;
+      const epsilon = 0.0001;
+      const isAtStart = activeTravel.position <= epsilon;
+      const isAtEnd = activeTravel.position >= maxPosition - epsilon;
+      const roundedPosition = Math.round(activeTravel.position);
+      const isOnNode = Math.abs(activeTravel.position - roundedPosition) <= epsilon;
+
+      const startOpenDirection = getPipeOpenDirection(
+        mapCharAt(mapLines, activeTravel.route[0].row, activeTravel.route[0].col),
+      );
+      const endOpenDirection = getPipeOpenDirection(
+        mapCharAt(
+          mapLines,
+          activeTravel.route[maxPosition].row,
+          activeTravel.route[maxPosition].col,
+        ),
+      );
+
+      if (isAtStart && startOpenDirection && pressedDirections.has(startOpenDirection)) {
+        finishTravel(0);
+        return;
+      }
+
+      if (isAtEnd && endOpenDirection && pressedDirections.has(endOpenDirection)) {
+        finishTravel(maxPosition);
+        return;
+      }
+
+      let forwardDirection = null;
+      let backwardDirection = null;
+
+      if (isOnNode) {
+        if (roundedPosition < maxPosition) {
+          forwardDirection = getDirectionBetweenPoints(
+            activeTravel.points[roundedPosition],
+            activeTravel.points[roundedPosition + 1],
+          );
+        }
+
+        if (roundedPosition > 0) {
+          backwardDirection = getDirectionBetweenPoints(
+            activeTravel.points[roundedPosition],
+            activeTravel.points[roundedPosition - 1],
+          );
+        }
+      } else {
+        const lowerIndex = Math.floor(activeTravel.position);
+        forwardDirection = getDirectionBetweenPoints(
+          activeTravel.points[lowerIndex],
+          activeTravel.points[lowerIndex + 1],
+        );
+        backwardDirection = OPPOSITE_DIRECTION[forwardDirection];
+      }
+
+      let travelDelta = 0;
+      if (forwardDirection && pressedDirections.has(forwardDirection)) {
+        travelDelta = 1;
+      } else if (backwardDirection && pressedDirections.has(backwardDirection)) {
+        travelDelta = -1;
+      }
+
+      if (travelDelta !== 0) {
+        activeTravel.position = k.clamp(
+          activeTravel.position +
+            (travelDelta * PIPE_TRAVEL_SPEED * k.dt()) / GAME_CONFIG.tile,
+          0,
+          maxPosition,
+        );
+      }
+
+      centerPlayerAt(player, interpolatePipePoint(activeTravel.points, activeTravel.position));
+    });
+
+    return {
+      isPipeTraveling,
+      cancelTravel,
+    };
+  }
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -611,31 +1117,20 @@ export function buildLevelTwoAndria(k, options = {}) {
       const x = col * GAME_CONFIG.tile;
       const y = mapOffsetY + row * GAME_CONFIG.tile;
 
-      if (cell === "E") {
+      const enemyConfig = ENEMY_BY_CHAR[cell];
+      if (enemyConfig) {
         addPatrolEnemy(
           k,
           x,
           y - GAME_CONFIG.tile * 2,
-          GAME_CONFIG.tile * 10,
-          95,
-          "alien_1",
-          8,
+          enemyConfig.patrolWidth,
+          enemyConfig.speed,
+          enemyConfig.enemyName,
+          enemyConfig.animationSpeed,
           shouldEnemyTurn,
-          false,
+          enemyConfig.ignoreHazards,
           isDialogOpen,
-        );
-      } else if (cell === "X") {
-        addPatrolEnemy(
-          k,
-          x,
-          y - GAME_CONFIG.tile * 2,
-          GAME_CONFIG.tile * 8,
-          80,
-          "spike",
-          8,
-          shouldEnemyTurn,
-          true,
-          isDialogOpen,
+          enemyConfig.randomJump,
         );
       }
     }
@@ -647,8 +1142,27 @@ export function buildLevelTwoAndria(k, options = {}) {
     addTownfolkNpc(k, playerStart.x + GAME_CONFIG.tile * 4, playerStart.y);
   }
 
+  for (const entryKey of pipeRoutes.keys()) {
+    if (!isOpenPipeEntryCell(mapLines, ...entryKey.split(":").map(Number))) {
+      continue;
+    }
+
+    const trigger = getPipeEntryTrigger(mapLines, entryKey, mapOffsetY);
+    if (!trigger) continue;
+
+    k.add([
+      k.pos(trigger.x, trigger.y),
+      k.rect(trigger.width, trigger.height),
+      k.area(),
+      k.opacity(0),
+      "pipeEntry",
+      { pipeEntryKey: entryKey },
+    ]);
+  }
+
   return {
     levelWidth,
     playerStart,
+    setupPipeTraversal,
   };
 }
