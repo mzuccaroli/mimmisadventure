@@ -171,6 +171,18 @@ const pipeTraversal =
         isPipeTraveling: () => false,
         cancelTravel: () => {},
       };
+const ropeTraversal =
+  typeof level.setupRopeTraversal === "function"
+    ? level.setupRopeTraversal(player, {
+        isGameOver: lives.isGameOver,
+        isRespawning: lives.isRespawning,
+        isDialogOpen: () => dialogOpen || goalSequenceActive,
+        isPipeTraveling: pipeTraversal.isPipeTraveling,
+      })
+    : {
+        isRopeHanging: () => false,
+        cancelHang: () => {},
+      };
 
 function isDebugFlying() {
   return DEBUG_CONFIG.enabled && debugFlyActive;
@@ -182,6 +194,7 @@ function isDebugFlying() {
     if (dialogOpen || goalSequenceActive) return;
     if (isDebugFlying()) return;
     if (pipeTraversal.isPipeTraveling()) return;
+    if (ropeTraversal.isRopeHanging()) return;
     if (lives.isGameOver() || lives.isRespawning()) return;
     if (!player.isGrounded()) return;
 
@@ -194,6 +207,7 @@ k.onKeyPress("h", () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
   if (isDebugFlying()) return;
   if (pipeTraversal.isPipeTraveling()) return;
+  if (ropeTraversal.isRopeHanging()) return;
   playHelpVisibilityCycle(5);
 });
 
@@ -204,6 +218,7 @@ if (DEBUG_CONFIG.enabled) {
 
     debugFlyActive = !debugFlyActive;
     pipeTraversal.cancelTravel();
+    ropeTraversal.cancelHang();
     player.opacity = 1;
     player.vel = k.vec2(0, 0);
 
@@ -237,6 +252,7 @@ setupPlayerMovement(k, player, {
   isRespawning: lives.isRespawning,
   isDialogOpen: () => dialogOpen || goalSequenceActive,
   isPipeTraveling: pipeTraversal.isPipeTraveling,
+  isRopeHanging: ropeTraversal.isRopeHanging,
   isDebugFlying,
 });
 
@@ -331,6 +347,7 @@ player.onCollide(TAGS.dialogTrigger, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
   if (isDebugFlying()) return;
   if (pipeTraversal.isPipeTraveling()) return;
+  if (ropeTraversal.isRopeHanging()) return;
   if (reachedDialogTrigger) return;
   reachedDialogTrigger = true;
   openDialogWithLock(currentLevelDefinition.getSignDialogPages());
@@ -340,6 +357,7 @@ player.onCollide(TAGS.goal, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
   if (isDebugFlying()) return;
   if (pipeTraversal.isPipeTraveling()) return;
+  if (ropeTraversal.isRopeHanging()) return;
   if (reachedGoal) return;
   reachedGoal = true;
   playGoalCelebrationThenDialog();

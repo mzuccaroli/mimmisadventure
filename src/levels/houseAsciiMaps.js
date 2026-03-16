@@ -118,6 +118,14 @@ export const HOUSE_ASCII_MAPS_GRAY_GREY_ROOF = Object.freeze({
     visual: ["/^^!\\", "[---]", "Lo=oR", "L><=R"],
     tiles: GRAY_WALL_GREY_ROOF_TILES,
   },
+  house_gray_grey_roof_6x4: {
+    visual: ["/^^!^\\", "[----]", "Lo===R", "L><==R"],
+    tiles: GRAY_WALL_GREY_ROOF_TILES,
+  },
+  house_gray_grey_roof_7x4: {
+    visual: ["/^^^^!\\", "[-----]", "Lo===oR", "L><===R"],
+    tiles: GRAY_WALL_GREY_ROOF_TILES,
+  },
   house_gray_grey_roof_6x5: {
     visual: ["/^^!^\\", "[----]", "Lo===R", "L=o==R", "L><==R"],
     tiles: GRAY_WALL_GREY_ROOF_TILES,
@@ -165,12 +173,20 @@ export const HOUSE_ASCII_MAPS_BROWN_RED_ROOF = Object.freeze({
     visual: ["/^^^\\", "[---]", "Lo=oR", "L><=R"],
     tiles: BROWN_WALL_RED_ROOF_TILES,
   },
+  house_brown_red_roof_6x4: {
+    visual: ["/^^!^\\", "[----]", "Loo==R", "L><==R"],
+    tiles: BROWN_WALL_RED_ROOF_TILES,
+  },
   house_brown_red_roof_6x5: {
     visual: ["/^^!^\\", "[----]", "Loo==R", "L=o==R", "L><==R"],
     tiles: BROWN_WALL_RED_ROOF_TILES,
   },
   house_brown_red_roof_7x6: {
     visual: ["/^^^^^\\", "[-----]", "Lo===oR", "L=====R", "L=o===R", "L><===R"],
+    tiles: BROWN_WALL_RED_ROOF_TILES,
+  },
+  house_brown_red_roof_9x5: {
+    visual: ["/^^^!^^^\\", "[-------]", "Lo=====oR", "L=o=o===R", "L><=====R"],
     tiles: BROWN_WALL_RED_ROOF_TILES,
   },
 });

@@ -8,10 +8,14 @@ const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
 const TINY_TOWN_TILE_SCALE = GAME_CONFIG.tile / 16;
 const PIPE_TILE_SCALE = GAME_CONFIG.tile / 16;
+const ROPE_TILE_SCALE = 1;
+const PLAYER_BACK_FRAME = 2;
 const HOUSE_TILE_CHARS = new Set("ABCFGHIJKLMNOQRTUVWYZ012aemwkx34".split(""));
 const PIPE_TRAVEL_SPEED = GAME_CONFIG.tile * 7;
+const ROPE_TRAVEL_SPEED = GAME_CONFIG.tile * 6.5;
 const PIPE_ENDPOINT_CHARS = new Set(["u", "j", "z", "!"]);
 const PIPE_CHARS = new Set(["u", "i", "j", "y", "v", "[", "]", "z", "|", "!"]);
+const ROPE_CHARS = new Set(["(", "r", ")", "{", "_", "}", "h"]);
 const PIPE_CONNECTIONS = Object.freeze({
   u: ["right"],
   i: ["left", "right"],
@@ -23,6 +27,15 @@ const PIPE_CONNECTIONS = Object.freeze({
   z: ["down"],
   "|": ["up", "down"],
   "!": ["up"],
+});
+const ROPE_CONNECTIONS = Object.freeze({
+  "(": ["down"],
+  r: ["up", "down"],
+  ")": ["up"],
+  "{": ["right"],
+  _: ["left", "right"],
+  "}": ["left"],
+  h: ["left", "right", "down"],
 });
 const DIRECTION_DELTAS = Object.freeze({
   left: { row: 0, col: -1 },
@@ -82,13 +95,28 @@ const ENEMY_BY_CHAR = Object.freeze({
 
 // House blocks use rectangles of H and are expanded through houseAsciiMaps.
 const LEVEL_TWO_ASCII = [
-  "          5                                              h                                 h",
-  "      #######                                            r                                         GGGGGGG",
-  "                              ####                                                                 GGGGGGG",
-  "                       ~~                                         GGGGGG                           GGGGGGG",
-  "                 ==                                               GGGGGG                           GGGGGGG",
-  "         #######                                                  GGGGGG          HHHHHHH          GGGGGGG",
-  "                                    RRRR                          GGGGGG          HHHHHHH     E    GGGGGGG                 RRRRRR",
+  "              5                                                                7                                                      6",
+  "            GGGG                                                              GGGG                                                  GGGGGG",
+  "            GGGG{______________}RRRRR                   X                     GGGG                                                  GGGGGG",
+  "            GGGG                RRRRR                 HHHHHH                  GGGG                      E                           GGGGGG",
+  "            GGGG                RRRRR                 HHHHHH                  GGGG                    RRRRRR                        GGGGGG",
+  "           ######               RRRRR                 HHHHHH{______________}######                    RRRRRR                        GGGGGG",
+  "                               #######                HHHHHH                                          RRRRRR                        GGGGGG",
+  "                                     (               ########                                         RRRRRR                        GGGGGG",
+  "                                     r               h                                                RRRRRR                        GGGGGG",
+  "                                     r                        X                                      ########                      ########            7",
+  "                  ~~~~RRRR           r        5             HHHHHHH                                                                                   GGGG",
+  "                      RRRR           r      =====           HHHHHHH                                                                                   GGGG",
+  "                      RRRR           r                      HHHHHHH                       ~~~                                                         GGGG",
+  "                      RRRR           r                      HHHHHHH                                                 ====                              GGGG",
+  "                     ######          r ===               #########                                                                                 ######",
+  "          5                          r    RRRRRRRRR                                                                                GGGG",
+  "      #######                        r    RRRRRRRRR                                              HHHHHHH                           GGGG",
+  "                              ####   r    RRRRRRRRR                                              HHHHHHH                           GGGG",
+  "                       ~~            r    RRRRRRRRR             =======                          HHHHHHH                           GGGG",
+  "                 ==                  )    RRRRRRRRR             =======                          HHHHHHH                         ######                                      ",
+  "         #######                    ################            =======          =======         =======                                                                     ",
+  "                                    RRRR                         =======          =======     E    =======                 ======",
   "                        HHHH        RRRRz         HHHHHH     X    GGGGGG          HHHHHHH          GGGGGGG                 RRRRRR    GGGG",
   "                        HHHH        RRRR|         HHHHHH          GGGGGG     6    HHHHHHH          GGGGGGG                 RRRRRR    GGGG",
   "                        HHHH        RRRR|         HHHHHH          GGGGGG          HHHHHHH          GGGGGGG      7       z  RRRRRR    GGGG      >     f",
@@ -128,8 +156,13 @@ const DECORATION_BY_CHAR = Object.freeze({
   n: { sprite: "flag_2", scale: 2 },
   b: { sprite: "button_green", scale: 2 },
   l: { sprite: "lever_1", scale: 2 },
-  r: { sprite: "rope_1", scale: 2 },
-  h: { sprite: "hook", scale: 2 },
+  "(": { sprite: "rope_vertical_start", scale: ROPE_TILE_SCALE },
+  r: { sprite: "rope_vertical_center", scale: ROPE_TILE_SCALE },
+  ")": { sprite: "rope_vertical_end", scale: ROPE_TILE_SCALE },
+  h: { sprite: "rope_hook", scale: ROPE_TILE_SCALE },
+  "{": { sprite: "rope_horizontal_start", scale: ROPE_TILE_SCALE },
+  _: { sprite: "rope_horizontal_center", scale: ROPE_TILE_SCALE },
+  "}": { sprite: "rope_horizontal_end", scale: ROPE_TILE_SCALE },
   u: { sprite: "pipe_blue_horizontal_start", scale: PIPE_TILE_SCALE },
   i: { sprite: "pipe_blue_horizontal_center", scale: PIPE_TILE_SCALE },
   j: { sprite: "pipe_blue_horizontal_end", scale: PIPE_TILE_SCALE },
@@ -182,12 +215,20 @@ function isPipeChar(cell) {
   return PIPE_CHARS.has(cell);
 }
 
+function isRopeChar(cell) {
+  return ROPE_CHARS.has(cell);
+}
+
 function isPipeEndpoint(cell) {
   return PIPE_ENDPOINT_CHARS.has(cell);
 }
 
 function getPipeConnections(cell) {
   return PIPE_CONNECTIONS[cell] ?? [];
+}
+
+function getRopeConnections(cell) {
+  return ROPE_CONNECTIONS[cell] ?? [];
 }
 
 function getPipeOpenDirection(cell) {
@@ -220,6 +261,30 @@ function getConnectedPipeNeighbors(mapLines, row, col) {
       const nextCell = mapCharAt(mapLines, nextRow, nextCol);
       if (!isPipeChar(nextCell)) return null;
       if (!getPipeConnections(nextCell).includes(OPPOSITE_DIRECTION[direction])) {
+        return null;
+      }
+
+      return {
+        row: nextRow,
+        col: nextCol,
+        direction,
+      };
+    })
+    .filter(Boolean);
+}
+
+function getConnectedRopeNeighbors(mapLines, row, col) {
+  const cell = mapCharAt(mapLines, row, col);
+  if (!isRopeChar(cell)) return [];
+
+  return getRopeConnections(cell)
+    .map((direction) => {
+      const delta = DIRECTION_DELTAS[direction];
+      const nextRow = row + delta.row;
+      const nextCol = col + delta.col;
+      const nextCell = mapCharAt(mapLines, nextRow, nextCol);
+      if (!isRopeChar(nextCell)) return null;
+      if (!getRopeConnections(nextCell).includes(OPPOSITE_DIRECTION[direction])) {
         return null;
       }
 
@@ -745,6 +810,7 @@ export function buildLevelTwoAndria(k, options = {}) {
   const { isDialogOpen = () => false } = options;
   const mapLines = applyHouseAsciiMaps(normalizeAsciiMap(LEVEL_TWO_ASCII));
   const pipeRoutes = buildPipeRoutes(mapLines);
+  const ropeCells = [];
   const rows = mapLines.length;
   const cols = mapLines[0].length;
   const levelWidth = cols * GAME_CONFIG.tile;
@@ -758,6 +824,13 @@ export function buildLevelTwoAndria(k, options = {}) {
   let npcSpawnPos = null;
 
   function getPipeTileCenter(row, col) {
+    return k.vec2(
+      col * GAME_CONFIG.tile + GAME_CONFIG.tile / 2,
+      mapOffsetY + row * GAME_CONFIG.tile + GAME_CONFIG.tile / 2,
+    );
+  }
+
+  function getRopeTileCenter(row, col) {
     return k.vec2(
       col * GAME_CONFIG.tile + GAME_CONFIG.tile / 2,
       mapOffsetY + row * GAME_CONFIG.tile + GAME_CONFIG.tile / 2,
@@ -828,6 +901,38 @@ export function buildLevelTwoAndria(k, options = {}) {
       startPoint.x + (endPoint.x - startPoint.x) * ratio,
       startPoint.y + (endPoint.y - startPoint.y) * ratio,
     );
+  }
+
+  function findNearbyRopeCell(player) {
+    const bbox = player.worldArea().bbox();
+    const bboxRight = bbox.pos.x + bbox.width;
+    const bboxBottom = bbox.pos.y + bbox.height;
+    const playerCenter = k.vec2(bbox.pos.x + bbox.width / 2, bbox.pos.y + bbox.height / 2);
+    let nearestCell = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const cell of ropeCells) {
+      const tileX = cell.col * GAME_CONFIG.tile;
+      const tileY = mapOffsetY + cell.row * GAME_CONFIG.tile;
+      const tileRight = tileX + GAME_CONFIG.tile;
+      const tileBottom = tileY + GAME_CONFIG.tile;
+      const intersects =
+        bbox.pos.x < tileRight &&
+        bboxRight > tileX &&
+        bbox.pos.y < tileBottom &&
+        bboxBottom > tileY;
+
+      if (!intersects) continue;
+
+      const center = getRopeTileCenter(cell.row, cell.col);
+      const distance = playerCenter.dist(center);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestCell = cell;
+      }
+    }
+
+    return nearestCell;
   }
 
   function setupPipeTraversal(player, traversalOptions = {}) {
@@ -1001,6 +1106,182 @@ export function buildLevelTwoAndria(k, options = {}) {
     };
   }
 
+  function setupRopeTraversal(player, traversalOptions = {}) {
+    const {
+      isGameOver = () => false,
+      isRespawning = () => false,
+      isDialogOpen: isRopeDialogOpen = () => false,
+      isPipeTraveling = () => false,
+    } = traversalOptions;
+
+    let activeHang = null;
+
+    function isRopeHanging() {
+      return activeHang !== null;
+    }
+
+    function setPlayerOnRope(point) {
+      centerPlayerAt(player, point);
+      player.opacity = 1;
+      player.stop();
+      player.vel = k.vec2(0, 0);
+      player.flipX = false;
+      player.frame = PLAYER_BACK_FRAME;
+    }
+
+    function getHangPoint() {
+      if (!activeHang) return null;
+
+      const currentPoint = getRopeTileCenter(activeHang.row, activeHang.col);
+      if (!activeHang.target) {
+        return currentPoint;
+      }
+
+      const targetPoint = getRopeTileCenter(activeHang.target.row, activeHang.target.col);
+      return k.vec2(
+        currentPoint.x + (targetPoint.x - currentPoint.x) * activeHang.progress,
+        currentPoint.y + (targetPoint.y - currentPoint.y) * activeHang.progress,
+      );
+    }
+
+    function releaseHang(jumpAway = false, jumpDirection = null) {
+      if (!activeHang) return;
+
+      const currentPoint = getHangPoint();
+      if (currentPoint) {
+        centerPlayerAt(player, currentPoint);
+      }
+
+      player.isStatic = false;
+      player.opacity = 1;
+      player.vel = jumpAway
+        ? k.vec2(
+            jumpDirection === "left"
+              ? -GAME_CONFIG.playerSpeed * 0.95
+              : jumpDirection === "right"
+                ? GAME_CONFIG.playerSpeed * 0.95
+                : 0,
+            -GAME_CONFIG.jumpForce * 0.82,
+          )
+        : k.vec2(0, 0);
+      activeHang = null;
+    }
+
+    function startHang(cell) {
+      if (!cell || activeHang) return;
+      if (isGameOver() || isRespawning() || isRopeDialogOpen() || isPipeTraveling()) return;
+
+      activeHang = {
+        row: cell.row,
+        col: cell.col,
+        target: null,
+        progress: 0,
+      };
+
+      player.isStatic = true;
+      setPlayerOnRope(getRopeTileCenter(cell.row, cell.col));
+    }
+
+    ["space"].forEach((key) => {
+      k.onKeyPress(key, () => {
+        if (!isRopeHanging()) return;
+        if (isGameOver() || isRespawning() || isRopeDialogOpen()) return;
+        releaseHang(true);
+      });
+    });
+
+    player.onUpdate(() => {
+      if (isGameOver() || isRespawning() || isRopeDialogOpen()) {
+        releaseHang(false);
+        return;
+      }
+
+      const pressedDirections = [];
+      if (k.isKeyDown("up") || k.isKeyDown("w")) pressedDirections.push("up");
+      if (k.isKeyDown("down") || k.isKeyDown("s")) pressedDirections.push("down");
+      if (k.isKeyDown("left") || k.isKeyDown("a")) pressedDirections.push("left");
+      if (k.isKeyDown("right") || k.isKeyDown("d")) pressedDirections.push("right");
+
+      if (!activeHang) {
+        if (pressedDirections.length === 0) return;
+        if (isPipeTraveling()) return;
+
+        const nearbyCell = findNearbyRopeCell(player);
+        if (!nearbyCell) return;
+
+        const neighbors = getConnectedRopeNeighbors(mapLines, nearbyCell.row, nearbyCell.col);
+        if (
+          neighbors.length === 0 ||
+          !neighbors.some(({ direction }) => pressedDirections.includes(direction))
+        ) {
+          return;
+        }
+
+        startHang(nearbyCell);
+      }
+
+      if (!activeHang) return;
+
+      if (activeHang.target) {
+        activeHang.progress = Math.min(
+          1,
+          activeHang.progress + (ROPE_TRAVEL_SPEED * k.dt()) / GAME_CONFIG.tile,
+        );
+
+        if (activeHang.progress >= 1) {
+          activeHang.row = activeHang.target.row;
+          activeHang.col = activeHang.target.col;
+          activeHang.target = null;
+          activeHang.progress = 0;
+        }
+      } else if (pressedDirections.length > 0) {
+        const neighbors = getConnectedRopeNeighbors(mapLines, activeHang.row, activeHang.col);
+        const availableDirections = new Set(
+          neighbors.map((neighbor) => neighbor.direction),
+        );
+        const isVerticalRope =
+          availableDirections.has("up") || availableDirections.has("down");
+        const jumpDirection = pressedDirections.find(
+          (direction) => direction === "left" || direction === "right",
+        );
+
+        if (
+          jumpDirection &&
+          isVerticalRope &&
+          !availableDirections.has(jumpDirection)
+        ) {
+          releaseHang(true, jumpDirection);
+          return;
+        }
+
+        const nextNode = pressedDirections
+          .map((direction) =>
+            neighbors.find((neighbor) => neighbor.direction === direction) ?? null,
+          )
+          .find(Boolean);
+
+        if (nextNode) {
+          activeHang.target = {
+            row: nextNode.row,
+            col: nextNode.col,
+          };
+          activeHang.progress = 0;
+        }
+      }
+
+      const point = getHangPoint();
+      if (point) {
+        player.isStatic = true;
+        setPlayerOnRope(point);
+      }
+    });
+
+    return {
+      isRopeHanging,
+      cancelHang: () => releaseHang(false),
+    };
+  }
+
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
     const row = Math.floor((worldY - mapOffsetY) / GAME_CONFIG.tile);
@@ -1031,6 +1312,10 @@ export function buildLevelTwoAndria(k, options = {}) {
       const cell = mapLines[row][col];
       const x = col * GAME_CONFIG.tile;
       const y = mapOffsetY + row * GAME_CONFIG.tile;
+
+      if (isRopeChar(cell)) {
+        ropeCells.push({ row, col });
+      }
 
       if (cell === "#") {
         const tileAbove = mapCharAt(mapLines, row - 1, col);
@@ -1164,5 +1449,6 @@ export function buildLevelTwoAndria(k, options = {}) {
     levelWidth,
     playerStart,
     setupPipeTraversal,
+    setupRopeTraversal,
   };
 }

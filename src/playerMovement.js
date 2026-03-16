@@ -21,38 +21,79 @@ export function setupPlayerMovement(k, player, options) {
     isRespawning = () => false,
     isDialogOpen = () => false,
     isPipeTraveling = () => false,
+    isRopeHanging = () => false,
     isDebugFlying = () => false,
   } = options;
   let facingLeft = false;
   let wasDebugFlying = false;
 
   function jumpIfGrounded() {
-    if (isGameOver() || isRespawning() || isDialogOpen() || isPipeTraveling()) return;
+    if (
+      isGameOver() ||
+      isRespawning() ||
+      isDialogOpen() ||
+      isPipeTraveling() ||
+      isRopeHanging()
+    ) {
+      return;
+    }
     if (player.isGrounded()) {
       player.jump();
     }
   }
 
   k.onKeyDown("left", () => {
-    if (isGameOver() || isRespawning() || isDialogOpen() || isPipeTraveling()) return;
+    if (
+      isGameOver() ||
+      isRespawning() ||
+      isDialogOpen() ||
+      isPipeTraveling() ||
+      isRopeHanging()
+    ) {
+      return;
+    }
     facingLeft = true;
     player.move(-playerSpeed, 0);
   });
 
   k.onKeyDown("a", () => {
-    if (isGameOver() || isRespawning() || isDialogOpen() || isPipeTraveling()) return;
+    if (
+      isGameOver() ||
+      isRespawning() ||
+      isDialogOpen() ||
+      isPipeTraveling() ||
+      isRopeHanging()
+    ) {
+      return;
+    }
     facingLeft = true;
     player.move(-playerSpeed, 0);
   });
 
   k.onKeyDown("right", () => {
-    if (isGameOver() || isRespawning() || isDialogOpen() || isPipeTraveling()) return;
+    if (
+      isGameOver() ||
+      isRespawning() ||
+      isDialogOpen() ||
+      isPipeTraveling() ||
+      isRopeHanging()
+    ) {
+      return;
+    }
     facingLeft = false;
     player.move(playerSpeed, 0);
   });
 
   k.onKeyDown("d", () => {
-    if (isGameOver() || isRespawning() || isDialogOpen() || isPipeTraveling()) return;
+    if (
+      isGameOver() ||
+      isRespawning() ||
+      isDialogOpen() ||
+      isPipeTraveling() ||
+      isRopeHanging()
+    ) {
+      return;
+    }
     facingLeft = false;
     player.move(playerSpeed, 0);
   });
@@ -91,13 +132,19 @@ export function setupPlayerMovement(k, player, options) {
       player.frame = moveX < 0 ? 7 : 5;
       player.flipX = false;
     } else if (wasDebugFlying) {
-      if (!isRespawning() && !isDialogOpen() && !isPipeTraveling()) {
+      if (!isRespawning() && !isDialogOpen() && !isPipeTraveling() && !isRopeHanging()) {
         player.isStatic = false;
         player.vel = k.vec2(0, 0);
       }
     }
 
-    if (!debugFlying && !isRespawning() && !isDialogOpen() && !isPipeTraveling()) {
+    if (
+      !debugFlying &&
+      !isRespawning() &&
+      !isDialogOpen() &&
+      !isPipeTraveling() &&
+      !isRopeHanging()
+    ) {
       player.flipX = false;
 
       if (!player.isGrounded()) {
@@ -128,7 +175,7 @@ export function setupPlayerMovement(k, player, options) {
         player.pos.x = maxX;
         player.vel.x = 0;
       }
-    } else if (!debugFlying && isPipeTraveling()) {
+    } else if (!debugFlying && (isPipeTraveling() || isRopeHanging())) {
       player.vel = k.vec2(0, 0);
     }
 
@@ -142,9 +189,11 @@ export function setupPlayerMovement(k, player, options) {
 
     const camMinY = camHalfH;
     const camMaxY = k.height() - camHalfH - 1;
-    const targetCamY = isPipeTraveling()
-      ? playerCenterY
-      : k.height() / 2 + cameraYOffset;
+    const baseCamY = k.height() / 2 + cameraYOffset;
+    const targetCamY =
+      isPipeTraveling() || isRopeHanging() || debugFlying
+        ? playerCenterY
+        : Math.min(baseCamY, playerCenterY + cameraYOffset);
     const camY = k.clamp(targetCamY, camMinY, camMaxY);
 
     k.setCamPos(camX, camY);
