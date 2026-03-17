@@ -12,6 +12,11 @@ import {
   getLevelTwoSignDialogPages,
 } from "./levels/2_andria/dialogs.js";
 import { buildLevelTwoAndria } from "./levels/2_andria/level.js";
+import {
+  getLevelThreeMontegrossoGoalDialogPages,
+  getLevelThreeMontegrossoSignDialogPages,
+} from "./levels/3_montegrosso/dialogs.js";
+import { buildLevelThreeMontegrosso } from "./levels/3_montegrosso/level.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
 import { loadEnemyTileAssets } from "./enemyTiles.js";
 import { loadEnvironmentTileAssets } from "./environmentTiles.js";
@@ -28,6 +33,11 @@ const LEVEL_DEFINITIONS = Object.freeze({
     buildLevel: buildLevelTwoAndria,
     getGoalDialogPages: getLevelTwoGoalDialogPages,
     getSignDialogPages: getLevelTwoSignDialogPages,
+  },
+  3: {
+    buildLevel: buildLevelThreeMontegrosso,
+    getGoalDialogPages: getLevelThreeMontegrossoGoalDialogPages,
+    getSignDialogPages: getLevelThreeMontegrossoSignDialogPages,
   },
 });
 
