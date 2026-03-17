@@ -605,7 +605,7 @@ function addTownfolkNpc(k, x, y) {
 
   const npc = k.add([
     k.pos(x, npcPosY),
-    k.sprite("npcTownfolkOldM001", { anim: "front" }),
+    k.sprite("npcQueen01Light", { anim: "front" }),
     k.scale(NPC_SCALE),
     k.area(),
     k.z(3),

@@ -5,9 +5,9 @@ const SIGN_DIALOG_PAGES = [
 ];
 
 const LEVEL_GOAL_DIALOG_PAGES = [
-  "Vecchio saggio:\nBenvenuta ad Andria, Mimmi.",
-  "Hai superato mostri, spuntoni e i canali della citta'.",
-  "Perfetto, questo livello adesso e' pronto per i test.",
+  "Regina di Andria:\nBenvenuta ad Andria, Mimmi.",
+  "Regina di Andria: ...\nHai superato mostri, spuntoni e i canali della citta'.",
+  "Regina di Andria: ...\nPerfetto, questo livello adesso e' pronto per i test.",
 ];
 
 export function getLevelTwoSignDialogPages() {
