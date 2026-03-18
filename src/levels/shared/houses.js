@@ -78,7 +78,7 @@ const BROWN_WALL_RED_ROOF_TILES = Object.freeze({
 // / ^ \ ! = roof top (left, center, right, chimney)
 // [ - ] * = roof bottom (left, center, right, dormer)
 // L = R = walls, o = window, d = closed door, > < = split closed door, D = open door
-export const HOUSE_ASCII_MAPS = Object.freeze({
+export const HOUSES = Object.freeze({
   house_brown_4x4: {
     visual: ["/^^\\", "[--]", "LooR", "L=dR"],
     tiles: BROWN_HOUSE_TILES,
@@ -109,7 +109,7 @@ export const HOUSE_ASCII_MAPS = Object.freeze({
   },
 });
 
-export const HOUSE_ASCII_MAPS_GRAY_GREY_ROOF = Object.freeze({
+export const HOUSES_GRAY_GREY_ROOF = Object.freeze({
   house_gray_grey_roof_4x4: {
     visual: ["/^^\\", "[--]", "LooR", "L=dR"],
     tiles: GRAY_WALL_GREY_ROOF_TILES,
@@ -164,7 +164,7 @@ export const HOUSE_ASCII_MAPS_GRAY_GREY_ROOF = Object.freeze({
   },
 });
 
-export const HOUSE_ASCII_MAPS_BROWN_RED_ROOF = Object.freeze({
+export const HOUSES_BROWN_RED_ROOF = Object.freeze({
   house_brown_red_roof_4x4: {
     visual: ["/^^\\", "[--]", "LooR", "L=dR"],
     tiles: BROWN_WALL_RED_ROOF_TILES,
@@ -206,10 +206,10 @@ function materializeHouseTemplate(definition) {
   );
 }
 
-function createTemplateBySize(houseAsciiMaps) {
+function createTemplateBySize(houseDefinitions) {
   return Object.freeze(
     Object.fromEntries(
-      Object.values(houseAsciiMaps).map((definition) => {
+      Object.values(houseDefinitions).map((definition) => {
         const template = materializeHouseTemplate(definition);
         return [`${template[0].length}x${template.length}`, template];
       }),
@@ -217,11 +217,11 @@ function createTemplateBySize(houseAsciiMaps) {
   );
 }
 
-const HOUSE_TEMPLATE_BY_SIZE = createTemplateBySize(HOUSE_ASCII_MAPS);
+const HOUSE_TEMPLATE_BY_SIZE = createTemplateBySize(HOUSES);
 const HOUSE_TEMPLATE_BY_SIZE_GRAY_GREY_ROOF =
-  createTemplateBySize(HOUSE_ASCII_MAPS_GRAY_GREY_ROOF);
+  createTemplateBySize(HOUSES_GRAY_GREY_ROOF);
 const HOUSE_TEMPLATE_BY_SIZE_BROWN_RED_ROOF =
-  createTemplateBySize(HOUSE_ASCII_MAPS_BROWN_RED_ROOF);
+  createTemplateBySize(HOUSES_BROWN_RED_ROOF);
 
 const HOUSE_PLACEHOLDER_CONFIG = Object.freeze({
   H: HOUSE_TEMPLATE_BY_SIZE,
@@ -237,7 +237,7 @@ function normalizePlaceholderConfig(placeholderConfig) {
   return placeholderConfig;
 }
 
-export function applyHouseAsciiMaps(
+export function applyHouses(
   mapLines,
   placeholderConfig = HOUSE_PLACEHOLDER_CONFIG,
 ) {
@@ -324,3 +324,5 @@ export function applyHouseAsciiMaps(
 
   return resultGrid.map((rowChars) => rowChars.join(""));
 }
+
+export const applyHouseAsciiMaps = applyHouses;

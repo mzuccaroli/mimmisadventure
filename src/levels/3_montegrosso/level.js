@@ -1,12 +1,11 @@
 import { GAME_CONFIG, TAGS } from "../../tiles.js";
 import { getEnemySpriteFrames } from "../../enemyTiles.js";
-import { getEnvironmentTileSprite } from "../../environmentTiles.js";
 import { getEnvironmentTileFarmSprite } from "../../environmentTiles_farm.js";
+import { isTreeTerrainCell, renderAsciiTreeCell } from "../shared/trees.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
-const BRANCH_CHARS = new Set(["L", "M", "R", "x", "m"]);
 
 const LEVEL_THREE_ASCII = [
   "                                                                          ",
@@ -48,66 +47,6 @@ const TERRAIN_CENTER_TILES = {
 const DECORATION_BY_CHAR = Object.freeze({
   s: { sprite: "farm_sign_post", z: 2 },
 });
-
-const TREE_FAMILY_YELLOW = "yellow";
-const TREE_FAMILY_GREEN = "green";
-
-const TREE_CANOPY_TILE_BY_CHAR = Object.freeze({
-  q: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_top_left" },
-  w: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_top_center" },
-  e: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_top_right" },
-  a: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_mid_left" },
-  d: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_mid_center" },
-  f: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_mid_right" },
-  c: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_bottom_left" },
-  j: { family: TREE_FAMILY_YELLOW, sprite: "tree_large_canopy_connector" },
-  g: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_bottom_center" },
-  h: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_bottom_right" },
-  t: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_top" },
-  u: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_upper" },
-  i: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_lower" },
-  o: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_bottom" },
-  Q: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_top_left" },
-  W: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_top_center" },
-  T: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_top_right" },
-  A: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_upper_left" },
-  D: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_upper_center" },
-  F: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_upper_right" },
-  Z: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_lower_left" },
-  X: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_lower_center" },
-  C: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_lower_right" },
-  V: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_horizontal_left" },
-  G: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_horizontal_center" },
-  H: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_horizontal_right" },
-  J: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_canopy_connector" },
-  Y: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_top" },
-  U: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_upper" },
-  I: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_lower" },
-  O: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_bottom" },
-});
-
-const TREE_TRUNK_TILE_BY_CHAR = Object.freeze({
-  n: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_plain" },
-  k: { family: TREE_FAMILY_YELLOW, sprite: "tree_large_trunk_top" },
-  b: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_branch_both" },
-  l: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_branch_left" },
-  r: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_branch_right" },
-  1: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_top" },
-  2: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_plain" },
-  4: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_branch_both" },
-  5: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_branch_right" },
-  6: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_trunk_top" },
-  7: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_trunk_plain" },
-  8: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_trunk_branch_left" },
-});
-
-const TREE_TRUNK_CHARS = new Set(Object.keys(TREE_TRUNK_TILE_BY_CHAR));
-const LEFT_BRANCH_CONNECTOR_CHARS = new Set(["b", "l", "4", "8"]);
-const RIGHT_BRANCH_CONNECTOR_CHARS = new Set(["b", "r", "4", "5"]);
-const BRANCH_CONNECTOR_CHARS = new Set([
-  ...LEFT_BRANCH_CONNECTOR_CHARS,
-  ...RIGHT_BRANCH_CONNECTOR_CHARS,
-]);
 
 function normalizeAsciiMap(lines) {
   const cols = Math.max(...lines.map((line) => line.length));
@@ -236,14 +175,6 @@ function addFarmSprite(k, spriteName, x, y, z = 1) {
   ]);
 }
 
-function addBaseEnvSprite(k, spriteName, x, y, z = 1) {
-  return k.add([
-    k.pos(x, y),
-    k.sprite(getEnvironmentTileSprite(spriteName)),
-    k.z(z),
-  ]);
-}
-
 function addGroundDecoration(k, spriteName, x, surfaceY, z = 2) {
   return addFarmSprite(k, spriteName, x, surfaceY - GAME_CONFIG.tile, z);
 }
@@ -251,115 +182,6 @@ function addGroundDecoration(k, spriteName, x, surfaceY, z = 2) {
 function addHayBaleWide(k, x, surfaceY, z = 2) {
   addGroundDecoration(k, "hay_bale_left", x, surfaceY, z);
   addGroundDecoration(k, "hay_bale_right", x + GAME_CONFIG.tile, surfaceY, z);
-}
-
-function addTreeSprite(k, family, spriteName, x, y, z) {
-  return family === TREE_FAMILY_GREEN
-    ? addBaseEnvSprite(k, spriteName, x, y, z)
-    : addFarmSprite(k, spriteName, x, y, z);
-}
-
-function addTreeTrunkColliderCell(k, x, y) {
-  k.add([
-    k.pos(x, y),
-    k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile),
-    k.area(),
-    k.body({ isStatic: true }),
-    k.opacity(0),
-    TERRAIN_TAG,
-  ]);
-}
-
-function addBranchPlatformCollider(k, x, y, widthInTiles = 3) {
-  k.add([
-    k.pos(x, y + GAME_CONFIG.tile * 0.58),
-    k.rect(widthInTiles * GAME_CONFIG.tile, GAME_CONFIG.tile * 0.22),
-    k.area(),
-    k.body({ isStatic: true }),
-    k.opacity(0),
-    TERRAIN_TAG,
-  ]);
-}
-
-function isBranchConnectorForLeftSide(cell) {
-  return LEFT_BRANCH_CONNECTOR_CHARS.has(cell);
-}
-
-function isBranchConnectorForRightSide(cell) {
-  return RIGHT_BRANCH_CONNECTOR_CHARS.has(cell);
-}
-
-function getBranchSprite(family, branchCell) {
-  if (family === TREE_FAMILY_GREEN) {
-    return branchCell === "L"
-      ? "base_tree_branch_tip_left"
-      : branchCell === "R"
-        ? "base_tree_branch_tip_right"
-        : branchCell === "x"
-          ? "base_tree_branch_leaf_end_left"
-          : branchCell === "m"
-            ? "base_tree_branch_leaf_center"
-            : "base_tree_branch_horizontal";
-  }
-
-  return branchCell === "L"
-    ? "tree_branch_stub"
-    : branchCell === "R"
-      ? "tree_branch_tip"
-      : branchCell === "x"
-        ? "tree_branch_leaf_end_left"
-        : branchCell === "m"
-          ? "tree_branch_leaf_center"
-          : "tree_branch_horizontal";
-}
-
-function renderBranchFromConnector(k, mapLines, row, col, direction, mapOffsetY, family) {
-  const step = direction === "left" ? -1 : 1;
-  const endCells = direction === "left" ? new Set(["L", "x"]) : new Set(["R"]);
-  const centerCells = direction === "left" ? new Set(["M", "m"]) : new Set(["M"]);
-  const firstCol = col + step;
-  const firstCell = mapCharAt(mapLines, row, firstCol);
-
-  if (!centerCells.has(firstCell)) {
-    return false;
-  }
-
-  let cursor = firstCol;
-  const branchCols = [cursor];
-
-  while (centerCells.has(mapCharAt(mapLines, row, cursor + step))) {
-    cursor += step;
-    branchCols.push(cursor);
-  }
-
-  const tipCol = cursor + step;
-  if (!endCells.has(mapCharAt(mapLines, row, tipCol))) {
-    return false;
-  }
-
-  branchCols.push(tipCol);
-
-  branchCols.forEach((branchCol) => {
-    const branchCell = mapCharAt(mapLines, row, branchCol);
-    addTreeSprite(
-      k,
-      family,
-      getBranchSprite(family, branchCell),
-      branchCol * GAME_CONFIG.tile,
-      mapOffsetY + row * GAME_CONFIG.tile,
-      -2,
-    );
-  });
-
-  const startCol = Math.min(...branchCols);
-  addBranchPlatformCollider(
-    k,
-    startCol * GAME_CONFIG.tile,
-    mapOffsetY + row * GAME_CONFIG.tile,
-    branchCols.length,
-  );
-
-  return true;
 }
 
 function addGreenhouseBlock(k, x, groundY, rows, z = -2) {
@@ -697,12 +519,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
 
   function hasGroundAtWorld(worldX, worldY) {
     const cell = cellAtWorld(worldX, worldY);
-    return (
-      cell === "#" ||
-      BRANCH_CHARS.has(cell) ||
-      TREE_TRUNK_CHARS.has(cell) ||
-      BRANCH_CONNECTOR_CHARS.has(cell)
-    );
+    return cell === "#" || isTreeTerrainCell(cell);
   }
 
   function shouldEnemyTurn(enemy, direction, bbox) {
@@ -715,11 +532,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     const wallCell = cellAtWorld(wallX, wallY);
 
     const noGroundAhead = !hasGroundAtWorld(footX, footY);
-    const wallAhead =
-      wallCell === "#" ||
-      TREE_TRUNK_CHARS.has(wallCell) ||
-      BRANCH_CHARS.has(wallCell) ||
-      BRANCH_CONNECTOR_CHARS.has(wallCell);
+    const wallAhead = wallCell === "#" || isTreeTerrainCell(wallCell);
     return noGroundAhead || wallAhead;
   }
 
@@ -743,38 +556,10 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
           hasTerrainLeft,
           hasTerrainRight,
         );
-      } else if (TREE_CANOPY_TILE_BY_CHAR[cell]) {
-        const tileDef = TREE_CANOPY_TILE_BY_CHAR[cell];
-        addTreeSprite(k, tileDef.family, tileDef.sprite, x, y, -4);
-      } else if (TREE_TRUNK_CHARS.has(cell)) {
-        const tileDef = TREE_TRUNK_TILE_BY_CHAR[cell];
-        addTreeSprite(k, tileDef.family, tileDef.sprite, x, y, -3);
-        addTreeTrunkColliderCell(k, x, y);
-
-        if (isBranchConnectorForLeftSide(cell)) {
-          renderBranchFromConnector(
-            k,
-            mapLines,
-            row,
-            col,
-            "left",
-            mapOffsetY,
-            tileDef.family,
-          );
-        }
-        if (isBranchConnectorForRightSide(cell)) {
-          renderBranchFromConnector(
-            k,
-            mapLines,
-            row,
-            col,
-            "right",
-            mapOffsetY,
-            tileDef.family,
-          );
-        }
-      } else if (BRANCH_CHARS.has(cell)) {
-        // Branch tiles are rendered only through adjacent trunk-branch connectors.
+      } else if (
+        renderAsciiTreeCell({ k, mapLines, row, col, mapOffsetY, terrainTag: TERRAIN_TAG })
+      ) {
+        // Tree tiles are rendered through the shared tree module.
       } else if (cell === "P") {
         playerStart = k.vec2(x, y - GAME_CONFIG.tile);
       } else if (cell === "S") {

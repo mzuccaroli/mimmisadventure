@@ -1,7 +1,7 @@
 import { GAME_CONFIG, TAGS } from "../../tiles.js";
 import { getEnemySpriteFrames } from "../../enemyTiles.js";
 import { getEnvironmentTileSprite } from "../../environmentTiles.js";
-import { applyHouseAsciiMaps } from "../houseAsciiMaps.js";
+import { applyHouses } from "../shared/houses.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
@@ -93,7 +93,7 @@ const ENEMY_BY_CHAR = Object.freeze({
   },
 });
 
-// House blocks use rectangles of H and are expanded through houseAsciiMaps.
+// House blocks use rectangles of H and are expanded through the shared houses module.
 const LEVEL_TWO_ASCII = [
   "              5                                                                                                                       6",
   "            GGGG                                                              GGGG                                                  GGGGGG",
@@ -808,7 +808,7 @@ function addPatrolEnemy(
 
 export function buildLevelTwoAndria(k, options = {}) {
   const { isDialogOpen = () => false } = options;
-  const mapLines = applyHouseAsciiMaps(normalizeAsciiMap(LEVEL_TWO_ASCII));
+  const mapLines = applyHouses(normalizeAsciiMap(LEVEL_TWO_ASCII));
   const pipeRoutes = buildPipeRoutes(mapLines);
   const ropeCells = [];
   const rows = mapLines.length;
