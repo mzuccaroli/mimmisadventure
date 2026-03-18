@@ -1,27 +1,117 @@
 import { GAME_CONFIG, TAGS } from "../../tiles.js";
 import { getEnemySpriteFrames } from "../../enemyTiles.js";
+import { getEnvironmentTileSprite } from "../../environmentTiles.js";
 import { getEnvironmentTileFarmSprite } from "../../environmentTiles_farm.js";
+import {
+  HOUSES_BROWN_RED_ROOF_BY_SIZE,
+  HOUSES_BY_SIZE,
+  HOUSES_GRAY_GREY_ROOF_BY_SIZE,
+  applyHouses,
+  findHousePlacements,
+} from "../shared/houses.js";
 import { isTreeTerrainCell, renderAsciiTreeCell } from "../shared/trees.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
+const TINY_TOWN_TILE_SCALE = GAME_CONFIG.tile / 16;
+const ENEMY_BY_CHAR = Object.freeze({
+  E: {
+    patrolWidth: GAME_CONFIG.tile * 7,
+    speed: 95,
+    enemyName: "alien_1",
+    animationSpeed: 8,
+  },
+  "^": {
+    patrolWidth: GAME_CONFIG.tile * 6,
+    speed: 72,
+    enemyName: "fly",
+    animationSpeed: 10,
+    isFlying: true,
+    patrolAxis: "horizontal",
+    bobAmplitude: 0,
+    bobSpeed: 0,
+  },
+  "|": {
+    patrolWidth: GAME_CONFIG.tile * 5,
+    speed: 66,
+    enemyName: "fly",
+    animationSpeed: 10,
+    isFlying: true,
+    patrolAxis: "vertical",
+    bobAmplitude: 0,
+    bobSpeed: 0,
+  },
+  9: {
+    patrolWidth: GAME_CONFIG.tile * 9,
+    speed: 78,
+    enemyName: "alien_4",
+    animationSpeed: 7,
+    randomJump: {
+      minInterval: 0.9,
+      maxInterval: 2.1,
+      chance: 0.65,
+      jumpForce: GAME_CONFIG.jumpForce * 0.78,
+    },
+  },
+});
 
 const LEVEL_THREE_ASCII = [
-  "                                                                          ",
-  "                                                                          ",
-  "             qwe               qwe     QWT            u                   ",
-  "             adf        #######adf     ADF      U     i              u    ",
-  "             cjh               cjh     ZJC      I     o              i    ",
-  "              k                 k       1       O  xmml              o    ",
-  "              n              xmmbMMR    1       6     n              rMMR ",
-  "   P          n                 n     xm4MR     7     n              n    ",
-  "########  ####n                 n     E 2       7     n  ##########  n  S ",
-  "########  ################################################################",
-  "##########################################################################",
-  "##########################################################################",
-  "##########################################################################",
+  "               ^                         qwe                                ^                          QWT                                                                                  qwe              ^           |          ",
+  "                                         adf^                               u                          ADF              ^                                                                  adf                             U        ",
+  "   P         qwe u                  qwe  cjh                                i        QWT               ZJC        qwe U                      QWT                                            cjh                             I       ",
+  "             adf i      E           adf   k                U                o        ADF                1   E     adf I                      ADF                            u                k              U               O       ",
+  "             cjh o      @@@@        cjh   n                I     |          n        ZJC                1   %%%%% cjh O                      ZJC            &&&&            i                n      %%%%%   I               6       ",
+  "              k  n      @@@@         k xmmbMMR             O                rMMR      1               xm4MR %%%%%  k  6                       1     E       &&&&            o                n      %%%%%   O            LMM8       ",
+  "              n  n      @@@@      xmmbMMR n                6                n         1 ########        2   %%%%%  n  7                       1  ########   &&&&            rMMR             n      %%%%%   6  9            7       ",
+  "              n  n      @@@@         n    n         E      7                n       xm4MR   E           2   %%%%%  n  7                     xm4MR           &&&&           #n###E##          n      %%%%%   7#######        7  S    ",
+  "              n  n   #####################n    9           7              E n         2                 2   ###### n                 E  ######2#################   9  ########7##########################   ########  E   9 7       ",
+  "####################################################################################################################################################################################################################################",
+  "####################################################################################################################################################################################################################################",
+  "####################################################################################################################################################################################################################################",
+  "####################################################################################################################################################################################################################################",
 ];
+
+const HOUSE_PLACEHOLDER_CONFIG = Object.freeze({
+  "@": HOUSES_BY_SIZE,
+  "%": HOUSES_GRAY_GREY_ROOF_BY_SIZE,
+  "&": HOUSES_BROWN_RED_ROOF_BY_SIZE,
+});
+
+const HOUSE_TILE_SPRITE_BY_CHAR = Object.freeze({
+  A: "tiny_roof_top_grey_left",
+  B: "tiny_roof_top_grey_center",
+  C: "tiny_roof_top_grey_right",
+  F: "tiny_roof_top_grey_chimney",
+  G: "tiny_roof_top_red_left",
+  H: "tiny_roof_top_red_center",
+  I: "tiny_roof_top_red_right",
+  J: "tiny_roof_top_red_chimney",
+  K: "tiny_roof_bottom_grey_left",
+  L: "tiny_roof_bottom_grey_center",
+  M: "tiny_roof_bottom_grey_right",
+  N: "tiny_roof_bottom_grey_dormer",
+  O: "tiny_roof_bottom_red_left",
+  Q: "tiny_roof_bottom_red_center",
+  R: "tiny_roof_bottom_red_right",
+  T: "tiny_roof_bottom_red_dormer",
+  U: "tiny_house_brown_wall_left",
+  V: "tiny_house_brown_wall_center",
+  W: "tiny_house_brown_door_open",
+  Y: "tiny_house_brown_wall_right",
+  Z: "tiny_house_gray_wall_left",
+  0: "tiny_house_gray_wall_center",
+  1: "tiny_house_gray_door_open",
+  2: "tiny_house_gray_wall_right",
+  a: "tiny_house_brown_window",
+  e: "tiny_house_brown_door_closed",
+  m: "tiny_house_brown_door_closed_right",
+  w: "tiny_house_brown_door_closed_left",
+  k: "tiny_house_gray_window",
+  x: "tiny_house_gray_door_closed",
+  3: "tiny_house_gray_door_closed_right",
+  4: "tiny_house_gray_door_closed_left",
+});
 
 const TERRAIN_NO_SUPPORT_TILES = {
   single: "soil_single",
@@ -48,6 +138,87 @@ const DECORATION_BY_CHAR = Object.freeze({
   s: { sprite: "farm_sign_post", z: 2 },
 });
 
+const BACKGROUND_HILL_SPECS = Object.freeze([
+  [0, 9, 4, 2, -1],
+  [5, 8, 7, 3, -3],
+  [13, 7, 5, 4, -3],
+  [18, 8, 5, 2, -1],
+  [24, 9, 6, 2, -2],
+  [31, 9, 5, 1, -1],
+  [37, 8, 8, 3, -3],
+  [46, 7, 6, 4, -3],
+  [55, 8, 7, 2, -3],
+  [62, 7, 8, 4, -3],
+  [74, 9, 6, 2, -2],
+  [82, 8, 8, 3, -3],
+  [93, 7, 6, 4, -3],
+  [104, 9, 5, 2, -2],
+  [112, 8, 7, 3, -3],
+  [124, 7, 8, 4, -3],
+  [136, 9, 5, 2, -2],
+  [144, 8, 9, 3, -3],
+  [157, 7, 7, 4, -3],
+  [168, 9, 5, 2, -2],
+  [176, 8, 8, 3, -3],
+  [188, 7, 9, 4, -3],
+  [201, 9, 6, 2, -2],
+  [210, 8, 7, 3, -3],
+]);
+
+const GREENHOUSE_SCENERY = Object.freeze([
+  { col: 37, kind: "open" },
+  { col: 55, kind: "closed" },
+  { col: 82, kind: "open" },
+  { col: 112, kind: "closed" },
+  { col: 176, kind: "open" },
+  { col: 210, kind: "closed" },
+]);
+
+const GROUND_PROP_SPECS = Object.freeze([
+  { col: 1, sprite: "pumpkin" },
+  { col: 3, sprite: "pumpkin_carved" },
+  { col: 7, sprite: "sunflower" },
+  { col: 17, sprite: "sprout_small" },
+  { col: 19, sprite: "sprout_leafy" },
+  { col: 22, sprite: "crop_stump" },
+  { col: 24, sprite: "hay_bale_single" },
+  { col: 25, sprite: "hay_bale_single" },
+  { col: 28, sprite: "crop_leaf_small" },
+  { col: 30, sprite: "crop_leaf_tall" },
+  { col: 34, sprite: "crop_carrot" },
+  { col: 36, sprite: "crop_tomatoes" },
+  { col: 44, sprite: "crop_corn" },
+  { col: 45, sprite: "crop_leaf_small" },
+  { col: 46, sprite: "shovel" },
+  { col: 53, sprite: "crop_wheat_tall" },
+  { col: 55, sprite: "crop_vine" },
+  { col: 63, sprite: "crop_dry_large" },
+  { col: 65, sprite: "crop_corn_tall" },
+  { col: 67, sprite: "pumpkin" },
+  { col: 96, sprite: "crop_leaf_small" },
+  { col: 98, sprite: "crop_leaf_tall" },
+  { col: 101, sprite: "crop_carrot" },
+  { col: 103, sprite: "crop_tomatoes" },
+  { col: 117, sprite: "pumpkin" },
+  { col: 120, sprite: "crop_wheat_tall" },
+  { col: 122, sprite: "crop_vine" },
+  { col: 148, sprite: "crop_leaf_small" },
+  { col: 150, sprite: "crop_corn" },
+  { col: 153, sprite: "shovel" },
+  { col: 176, sprite: "pumpkin_carved" },
+  { col: 179, sprite: "crop_dry_large" },
+  { col: 182, sprite: "crop_corn_tall" },
+  { col: 205, sprite: "crop_leaf_small" },
+  { col: 208, sprite: "crop_tomatoes" },
+  { col: 211, sprite: "pumpkin" },
+]);
+
+const WIDE_PROP_SPECS = Object.freeze([
+  { col: 26, kind: "hay_bale_wide" },
+  { col: 132, kind: "hay_bale_wide" },
+  { col: 186, kind: "hay_bale_wide" },
+]);
+
 function normalizeAsciiMap(lines) {
   const cols = Math.max(...lines.map((line) => line.length));
   return lines.map((line) => line.padEnd(cols, " "));
@@ -59,7 +230,25 @@ function mapCharAt(mapLines, row, col) {
   return mapLines[row][col];
 }
 
-function buildTerrainColliderRects(mapLines) {
+function buildCellKey(row, col) {
+  return `${row}:${col}`;
+}
+
+function buildHouseCellSet(housePlacements) {
+  const cells = new Set();
+
+  for (const placement of housePlacements) {
+    for (let row = 0; row < placement.template.length; row++) {
+      for (let col = 0; col < placement.template[row].length; col++) {
+        cells.add(buildCellKey(placement.row + row, placement.col + col));
+      }
+    }
+  }
+
+  return cells;
+}
+
+function buildTerrainColliderRects(mapLines, houseCells) {
   const finalized = [];
   let active = new Map();
 
@@ -69,13 +258,16 @@ function buildTerrainColliderRects(mapLines) {
     let col = 0;
 
     while (col < line.length) {
-      if (line[col] !== "#") {
+      if (line[col] !== "#" && !houseCells.has(buildCellKey(row, col))) {
         col += 1;
         continue;
       }
 
       const start = col;
-      while (col + 1 < line.length && line[col + 1] === "#") {
+      while (
+        col + 1 < line.length &&
+        (line[col + 1] === "#" || houseCells.has(buildCellKey(row, col + 1)))
+      ) {
         col += 1;
       }
 
@@ -184,7 +376,7 @@ function addHayBaleWide(k, x, surfaceY, z = 2) {
   addGroundDecoration(k, "hay_bale_right", x + GAME_CONFIG.tile, surfaceY, z);
 }
 
-function addGreenhouseBlock(k, x, groundY, rows, z = -2) {
+function addGreenhouseBlock(k, x, groundY, rows, z = 0.25) {
   const topY = groundY - rows.length * GAME_CONFIG.tile;
 
   rows.forEach((rowSprites, rowIndex) => {
@@ -301,50 +493,128 @@ function addDecorativeSoilPatch(k, startCol, topRow, width, height, mapOffsetY, 
   }
 }
 
-function addFarmScenery(k, mapOffsetY) {
+function getTopPlayableSoilRow(mapLines, col) {
+  for (let row = 0; row < mapLines.length; row++) {
+    if (mapCharAt(mapLines, row, col) === "#") {
+      return row;
+    }
+  }
+
+  return null;
+}
+
+function getTopBackgroundSoilRow(col) {
+  let topRow = null;
+
+  for (const [startCol, patchTopRow, width] of BACKGROUND_HILL_SPECS) {
+    if (col < startCol || col >= startCol + width) continue;
+    topRow = topRow === null ? patchTopRow : Math.min(topRow, patchTopRow);
+  }
+
+  return topRow;
+}
+
+function getTopSoilRow(mapLines, col) {
+  const playableTopRow = getTopPlayableSoilRow(mapLines, col);
+  const backgroundTopRow = getTopBackgroundSoilRow(col);
+
+  if (playableTopRow === null) return backgroundTopRow;
+  if (backgroundTopRow === null) return playableTopRow;
+  return Math.min(playableTopRow, backgroundTopRow);
+}
+
+function getFlatSupportRow(mapLines, startCol, widthInTiles) {
+  let supportRow = null;
+
+  for (let offset = 0; offset < widthInTiles; offset++) {
+    const topRow = getTopSoilRow(mapLines, startCol + offset);
+    if (topRow === null) return null;
+    if (supportRow === null) {
+      supportRow = topRow;
+      continue;
+    }
+    if (supportRow !== topRow) return null;
+  }
+
+  return supportRow;
+}
+
+function findNearestFlatSupport(mapLines, startCol, widthInTiles, maxShift = 8) {
+  const maxStartCol = mapLines[0].length - widthInTiles;
+
+  for (let delta = 0; delta <= maxShift; delta++) {
+    const candidates =
+      delta === 0 ? [startCol] : [startCol - delta, startCol + delta];
+
+    for (const candidate of candidates) {
+      if (candidate < 0 || candidate > maxStartCol) continue;
+      const supportRow = getFlatSupportRow(mapLines, candidate, widthInTiles);
+      if (supportRow !== null) {
+        return { col: candidate, row: supportRow };
+      }
+    }
+  }
+
+  return null;
+}
+
+function getSupportSurfaceY(mapOffsetY, supportRow) {
+  return mapOffsetY + supportRow * GAME_CONFIG.tile;
+}
+
+function addGroundedFarmDecoration(
+  k,
+  mapLines,
+  mapOffsetY,
+  startCol,
+  spriteName,
+  { widthInTiles = 1, z = 2, maxShift = 4 } = {},
+) {
+  const support = findNearestFlatSupport(mapLines, startCol, widthInTiles, maxShift);
+  if (!support) return null;
+
+  addGroundDecoration(
+    k,
+    spriteName,
+    support.col * GAME_CONFIG.tile,
+    getSupportSurfaceY(mapOffsetY, support.row),
+    z,
+  );
+
+  return support;
+}
+
+function addFarmScenery(k, mapLines, mapOffsetY) {
   const tile = GAME_CONFIG.tile;
-  const rowY = (row) => mapOffsetY + row * tile;
-  const groundSurfaceY = rowY(9);
-  const upperSurfaceY = rowY(8);
+  BACKGROUND_HILL_SPECS.forEach(([startCol, topRow, width, height, z]) => {
+    addDecorativeSoilPatch(k, startCol, topRow, width, height, mapOffsetY, z);
+  });
 
-  addDecorativeSoilPatch(k, 0, 9, 4, 2, mapOffsetY, -1);
-  addDecorativeSoilPatch(k, 5, 8, 7, 3, mapOffsetY, -3);
-  addDecorativeSoilPatch(k, 13, 7, 5, 4, mapOffsetY, -3);
-  addDecorativeSoilPatch(k, 18, 8, 5, 2, mapOffsetY, -1);
-  addDecorativeSoilPatch(k, 24, 9, 6, 2, mapOffsetY, -2);
-  addDecorativeSoilPatch(k, 31, 9, 5, 1, mapOffsetY, -1);
-  addDecorativeSoilPatch(k, 37, 8, 8, 3, mapOffsetY, -3);
-  addDecorativeSoilPatch(k, 46, 7, 6, 4, mapOffsetY, -3);
-  addDecorativeSoilPatch(k, 50, 9, 4, 1, mapOffsetY, -1);
-  addDecorativeSoilPatch(k, 55, 8, 7, 2, mapOffsetY, -3);
-  addDecorativeSoilPatch(k, 62, 7, 8, 4, mapOffsetY, -3);
-  addGreenhouseOpen(k, tile * 54, groundSurfaceY);
-  addGreenhouseClosed(k, tile * 58, groundSurfaceY);
+  GREENHOUSE_SCENERY.forEach(({ col, kind }) => {
+    const support = findNearestFlatSupport(mapLines, col, 4, 10);
+    if (!support) return;
 
-  addGroundDecoration(k, "pumpkin", tile * 1, upperSurfaceY);
-  addGroundDecoration(k, "pumpkin_carved", tile * 3, upperSurfaceY);
-  addGroundDecoration(k, "sunflower", tile * 7, upperSurfaceY);
-  addGroundDecoration(k, "hay_bale_single", tile * 24, upperSurfaceY);
-  addGroundDecoration(k, "hay_bale_single", tile * 24, upperSurfaceY - tile);
-  addHayBaleWide(k, tile * 26, upperSurfaceY);
-  addGroundDecoration(k, "sprout_small", tile * 17, upperSurfaceY);
-  addGroundDecoration(k, "sprout_leafy", tile * 19, upperSurfaceY);
-  addGroundDecoration(k, "crop_stump", tile * 22, upperSurfaceY);
+    const surfaceY = getSupportSurfaceY(mapOffsetY, support.row);
+    if (kind === "open") {
+      addGreenhouseOpen(k, tile * support.col, surfaceY);
+    } else {
+      addGreenhouseClosed(k, tile * support.col, surfaceY);
+    }
+  });
 
-  addGroundDecoration(k, "crop_leaf_small", tile * 28, groundSurfaceY);
-  addGroundDecoration(k, "crop_leaf_tall", tile * 30, groundSurfaceY);
-  addGroundDecoration(k, "crop_carrot", tile * 34, groundSurfaceY);
-  addGroundDecoration(k, "crop_tomatoes", tile * 36, groundSurfaceY);
-  addGroundDecoration(k, "crop_corn", tile * 44, groundSurfaceY);
-  addGroundDecoration(k, "crop_leaf_small", tile * 45, groundSurfaceY);
-  addGroundDecoration(k, "shovel", tile * 46, groundSurfaceY);
-  addFarmSprite(k, "hanging_pot", tile * 61, groundSurfaceY - tile * 4, -1);
+  GROUND_PROP_SPECS.forEach(({ col, sprite }) => {
+    addGroundedFarmDecoration(k, mapLines, mapOffsetY, col, sprite);
+  });
 
-  addGroundDecoration(k, "crop_wheat_tall", tile * 53, groundSurfaceY);
-  addGroundDecoration(k, "crop_vine", tile * 55, groundSurfaceY);
-  addGroundDecoration(k, "pumpkin", tile * 67, groundSurfaceY);
-  addGroundDecoration(k, "crop_dry_large", tile * 63, groundSurfaceY);
-  addGroundDecoration(k, "crop_corn_tall", tile * 65, groundSurfaceY);
+  WIDE_PROP_SPECS.forEach(({ col, kind }) => {
+    const support = findNearestFlatSupport(mapLines, col, 2, 6);
+    if (!support) return;
+
+    const surfaceY = getSupportSurfaceY(mapOffsetY, support.row);
+    if (kind === "hay_bale_wide") {
+      addHayBaleWide(k, tile * support.col, surfaceY);
+    }
+  });
 }
 
 function addDecoration(k, spriteName, x, y, z = 2) {
@@ -432,14 +702,23 @@ function addPatrolEnemy(
   animationSpeed = 8,
   shouldTurn = null,
   isDialogOpen = () => false,
+  randomJump = null,
 ) {
   const animationFrames = getEnemySpriteFrames(enemyName);
+  const jumpSettings = randomJump
+    ? {
+        minInterval: randomJump.minInterval ?? 1,
+        maxInterval: randomJump.maxInterval ?? 2,
+        chance: randomJump.chance ?? 0.5,
+        jumpForce: randomJump.jumpForce ?? GAME_CONFIG.jumpForce * 0.75,
+      }
+    : null;
   const enemy = k.add([
     k.pos(x, y),
     k.sprite(animationFrames[0]),
     k.scale(1.5),
     k.area(),
-    k.body(),
+    k.body(jumpSettings ? { jumpForce: jumpSettings.jumpForce } : {}),
     k.z(4),
     TAGS.hazard,
     "enemy",
@@ -451,6 +730,10 @@ function addPatrolEnemy(
   let animationTimer = 0;
   let frameIndex = 0;
   let turnCooldown = 0;
+  let jumpTimer = jumpSettings
+    ? jumpSettings.minInterval +
+      Math.random() * (jumpSettings.maxInterval - jumpSettings.minInterval)
+    : 0;
 
   enemy.onCollide(TERRAIN_TAG, (_, col) => {
     if (turnCooldown > 0) return;
@@ -471,7 +754,23 @@ function addPatrolEnemy(
       return;
     }
 
+    if (enemy.isStatic) {
+      enemy.vel = k.vec2(0, 0);
+      return;
+    }
+
     turnCooldown = Math.max(0, turnCooldown - k.dt());
+    if (jumpSettings) {
+      jumpTimer -= k.dt();
+      if (jumpTimer <= 0) {
+        if (enemy.isGrounded() && Math.random() <= jumpSettings.chance) {
+          enemy.jump();
+        }
+        jumpTimer =
+          jumpSettings.minInterval +
+          Math.random() * (jumpSettings.maxInterval - jumpSettings.minInterval);
+      }
+    }
     const bbox = enemy.worldArea().bbox();
 
     if (
@@ -515,9 +814,99 @@ function addPatrolEnemy(
   return enemy;
 }
 
+function addFlyingEnemy(
+  k,
+  x,
+  y,
+  patrolWidth = GAME_CONFIG.tile * 6,
+  speed = 72,
+  enemyName = "fly",
+  animationSpeed = 10,
+  isDialogOpen = () => false,
+  patrolAxis = "horizontal",
+  bobAmplitude = GAME_CONFIG.tile * 0.35,
+  bobSpeed = 2.4,
+) {
+  const animationFrames = getEnemySpriteFrames(enemyName);
+  const enemy = k.add([
+    k.pos(x, y),
+    k.sprite(animationFrames[0]),
+    k.scale(1.5),
+    k.area(),
+    k.z(4),
+    TAGS.hazard,
+    "enemy",
+  ]);
+
+  const minX = x - patrolWidth;
+  const maxX = x + patrolWidth;
+  const minY = y - patrolWidth;
+  const maxY = y + patrolWidth;
+  const baseX = x;
+  const baseY = y;
+  let direction = 1;
+  let animationTimer = 0;
+  let frameIndex = 0;
+
+  enemy.onUpdate(() => {
+    if (isDialogOpen() || enemy.isStatic) {
+      return;
+    }
+
+    const bobOffset =
+      bobAmplitude > 0 && bobSpeed > 0
+        ? Math.sin(k.time() * bobSpeed) * bobAmplitude
+        : 0;
+
+    if (patrolAxis === "vertical") {
+      enemy.move(0, speed * direction);
+      enemy.pos.x = baseX + bobOffset;
+    } else {
+      enemy.move(speed * direction, 0);
+      enemy.pos.y = baseY + bobOffset;
+    }
+
+    if (animationFrames.length > 1) {
+      animationTimer += k.dt();
+      if (animationTimer >= 1 / animationSpeed) {
+        animationTimer = 0;
+        frameIndex = (frameIndex + 1) % animationFrames.length;
+        enemy.use(k.sprite(animationFrames[frameIndex]));
+      }
+    }
+
+    enemy.flipX = direction < 0;
+    if (patrolAxis === "vertical") {
+      if (enemy.pos.y >= maxY) {
+        enemy.pos.y = maxY;
+        direction = -1;
+      } else if (enemy.pos.y <= minY) {
+        enemy.pos.y = minY;
+        direction = 1;
+      }
+    } else {
+      if (enemy.pos.x >= maxX) {
+        enemy.pos.x = maxX;
+        direction = -1;
+      } else if (enemy.pos.x <= minX) {
+        enemy.pos.x = minX;
+        direction = 1;
+      }
+    }
+  });
+
+  return enemy;
+}
+
 export function buildLevelThreeMontegrosso(k, options = {}) {
   const { isDialogOpen = () => false } = options;
-  const mapLines = normalizeAsciiMap(LEVEL_THREE_ASCII);
+  const baseMapLines = normalizeAsciiMap(LEVEL_THREE_ASCII);
+  const housePlacements = findHousePlacements(
+    baseMapLines,
+    HOUSE_PLACEHOLDER_CONFIG,
+  );
+  const houseCells = buildHouseCellSet(housePlacements);
+  const mapLines = applyHouses(baseMapLines, HOUSE_PLACEHOLDER_CONFIG);
   const rows = mapLines.length;
   const cols = mapLines[0].length;
   const levelWidth = cols * GAME_CONFIG.tile;
@@ -536,9 +925,19 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     return mapCharAt(mapLines, row, col);
   }
 
+  function isHouseCell(row, col) {
+    return houseCells.has(buildCellKey(row, col));
+  }
+
+  function isHouseAtWorld(worldX, worldY) {
+    const col = Math.floor(worldX / GAME_CONFIG.tile);
+    const row = Math.floor((worldY - mapOffsetY) / GAME_CONFIG.tile);
+    return isHouseCell(row, col);
+  }
+
   function hasGroundAtWorld(worldX, worldY) {
     const cell = cellAtWorld(worldX, worldY);
-    return cell === "#" || isTreeTerrainCell(cell);
+    return cell === "#" || isHouseAtWorld(worldX, worldY) || isTreeTerrainCell(cell);
   }
 
   function shouldEnemyTurn(enemy, direction, bbox) {
@@ -551,7 +950,8 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     const wallCell = cellAtWorld(wallX, wallY);
 
     const noGroundAhead = !hasGroundAtWorld(footX, footY);
-    const wallAhead = wallCell === "#" || isTreeTerrainCell(wallCell);
+    const wallAhead =
+      wallCell === "#" || isHouseAtWorld(wallX, wallY) || isTreeTerrainCell(wallCell);
     return noGroundAhead || wallAhead;
   }
 
@@ -575,6 +975,14 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
           hasTerrainLeft,
           hasTerrainRight,
         );
+      } else if (isHouseCell(row, col)) {
+        const spriteName = HOUSE_TILE_SPRITE_BY_CHAR[cell];
+        k.add([
+          k.pos(x, y),
+          k.sprite(getEnvironmentTileSprite(spriteName)),
+          k.scale(TINY_TOWN_TILE_SCALE),
+          k.z(0.5),
+        ]);
       } else if (
         renderAsciiTreeCell({ k, mapLines, row, col, mapOffsetY, terrainTag: TERRAIN_TAG })
       ) {
@@ -600,9 +1008,9 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     }
   }
 
-  addFarmScenery(k, mapOffsetY);
+  addFarmScenery(k, mapLines, mapOffsetY);
 
-  const terrainColliderRects = buildTerrainColliderRects(mapLines);
+  const terrainColliderRects = buildTerrainColliderRects(mapLines, houseCells);
   for (const rect of terrainColliderRects) {
     const x = rect.x0 * GAME_CONFIG.tile;
     const y = mapOffsetY + rect.startRow * GAME_CONFIG.tile;
@@ -621,21 +1029,39 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      if (mapLines[row][col] !== "E") continue;
+      const enemyConfig = ENEMY_BY_CHAR[mapLines[row][col]];
+      if (!enemyConfig) continue;
 
       const x = col * GAME_CONFIG.tile;
       const y = mapOffsetY + row * GAME_CONFIG.tile;
-      addPatrolEnemy(
-        k,
-        x,
-        y - GAME_CONFIG.tile * 2,
-        GAME_CONFIG.tile * 7,
-        95,
-        "alien_1",
-        8,
-        shouldEnemyTurn,
-        isDialogOpen,
-      );
+      if (enemyConfig.isFlying) {
+        addFlyingEnemy(
+          k,
+          x,
+          y,
+          enemyConfig.patrolWidth,
+          enemyConfig.speed,
+          enemyConfig.enemyName,
+          enemyConfig.animationSpeed,
+          isDialogOpen,
+          enemyConfig.patrolAxis,
+          enemyConfig.bobAmplitude,
+          enemyConfig.bobSpeed,
+        );
+      } else {
+        addPatrolEnemy(
+          k,
+          x,
+          y - GAME_CONFIG.tile * 2,
+          enemyConfig.patrolWidth,
+          enemyConfig.speed,
+          enemyConfig.enemyName,
+          enemyConfig.animationSpeed,
+          shouldEnemyTurn,
+          isDialogOpen,
+          enemyConfig.randomJump,
+        );
+      }
     }
   }
 

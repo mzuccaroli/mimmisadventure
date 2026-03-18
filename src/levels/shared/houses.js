@@ -223,6 +223,12 @@ const HOUSE_TEMPLATE_BY_SIZE_GRAY_GREY_ROOF =
 const HOUSE_TEMPLATE_BY_SIZE_BROWN_RED_ROOF =
   createTemplateBySize(HOUSES_BROWN_RED_ROOF);
 
+export const HOUSES_BY_SIZE = HOUSE_TEMPLATE_BY_SIZE;
+export const HOUSES_GRAY_GREY_ROOF_BY_SIZE =
+  HOUSE_TEMPLATE_BY_SIZE_GRAY_GREY_ROOF;
+export const HOUSES_BROWN_RED_ROOF_BY_SIZE =
+  HOUSE_TEMPLATE_BY_SIZE_BROWN_RED_ROOF;
+
 const HOUSE_PLACEHOLDER_CONFIG = Object.freeze({
   H: HOUSE_TEMPLATE_BY_SIZE,
   G: HOUSE_TEMPLATE_BY_SIZE_GRAY_GREY_ROOF,
@@ -237,15 +243,16 @@ function normalizePlaceholderConfig(placeholderConfig) {
   return placeholderConfig;
 }
 
-export function applyHouses(
+export function findHousePlacements(
   mapLines,
   placeholderConfig = HOUSE_PLACEHOLDER_CONFIG,
 ) {
   const sourceGrid = mapLines.map((line) => line.split(""));
-  const resultGrid = mapLines.map((line) => line.split(""));
   const visited = new Set();
-  const normalizedPlaceholderConfig = normalizePlaceholderConfig(placeholderConfig);
+  const normalizedPlaceholderConfig =
+    normalizePlaceholderConfig(placeholderConfig);
   const placeholderChars = new Set(Object.keys(normalizedPlaceholderConfig));
+  const placements = [];
 
   function key(row, col) {
     return `${row}:${col}`;
@@ -313,11 +320,36 @@ export function applyHouses(
         );
       }
 
-      for (let templateRow = 0; templateRow < template.length; templateRow++) {
-        for (let templateCol = 0; templateCol < template[templateRow].length; templateCol++) {
-          resultGrid[minRow + templateRow][minCol + templateCol] =
-            template[templateRow][templateCol];
-        }
+      placements.push({
+        placeholderChar,
+        row: minRow,
+        col: minCol,
+        width,
+        height,
+        template,
+      });
+    }
+  }
+
+  return placements;
+}
+
+export function applyHouses(
+  mapLines,
+  placeholderConfig = HOUSE_PLACEHOLDER_CONFIG,
+) {
+  const resultGrid = mapLines.map((line) => line.split(""));
+  const placements = findHousePlacements(mapLines, placeholderConfig);
+
+  for (const placement of placements) {
+    for (let templateRow = 0; templateRow < placement.template.length; templateRow++) {
+      for (
+        let templateCol = 0;
+        templateCol < placement.template[templateRow].length;
+        templateCol++
+      ) {
+        resultGrid[placement.row + templateRow][placement.col + templateCol] =
+          placement.template[templateRow][templateCol];
       }
     }
   }
