@@ -1,13 +1,13 @@
 const SIGN_DIALOG_PAGES = [
-  "[MONTEGROSSO]\n\nSentiero basso del borgo.",
-  "Pochi mostri in zona, ma il terreno e' irregolare.",
-  "Raggiungi il saggio oltre gli spuntoni.",
+  "[MONTEGROSSO]\n\nCampi e serre del borgo.",
+  "Attenzione: i passaggi tra gli orti sono stretti e pieni di ostacoli.",
+  "Raggiungi il saggio oltre la serra.",
 ];
 
 const LEVEL_GOAL_DIALOG_PAGES = [
   "Saggio di Montegrosso:\nBen arrivata, Mimmi.",
-  "Saggio di Montegrosso: ...\nQuesto e' solo un primo tratto del monte, ma il passaggio funziona.",
-  "Saggio di Montegrosso: ...\nPossiamo ampliare il livello con nuovi salti e piu' pericoli.",
+  "Saggio di Montegrosso: ...\nAdesso il borgo ha finalmente l'aspetto dei campi che volevamo.",
+  "Saggio di Montegrosso: ...\nPossiamo ampliare il livello con nuove serre, sentieri e salti.",
 ];
 
 export function getLevelThreeMontegrossoSignDialogPages() {

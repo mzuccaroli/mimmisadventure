@@ -2,6 +2,7 @@ import kaplay from "kaplay";
 import { loadBackgroundTileAssets } from "./backgroundTiles.js";
 import { createDialogSystem } from "./dialogUI.js";
 import { setupLivesSystem } from "./lives.js";
+import { loadEnvironmentTileFarmAssets } from "./environmentTiles_farm.js";
 import {
   getLevelOneGoalDialogPages,
   getLevelOneSignDialogPages,
@@ -69,6 +70,7 @@ const k = kaplay();
 loadTileAssets(k);
 loadBackgroundTileAssets(k);
 loadEnvironmentTileAssets(k);
+loadEnvironmentTileFarmAssets(k);
 loadEnemyTileAssets(k);
 loadServiceTiles(k);
 k.setGravity(1800);

@@ -1,51 +1,113 @@
 import { GAME_CONFIG, TAGS } from "../../tiles.js";
 import { getEnemySpriteFrames } from "../../enemyTiles.js";
 import { getEnvironmentTileSprite } from "../../environmentTiles.js";
+import { getEnvironmentTileFarmSprite } from "../../environmentTiles_farm.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
+const BRANCH_CHARS = new Set(["L", "M", "R", "x", "m"]);
 
 const LEVEL_THREE_ASCII = [
-  "                                                          ",
-  "                              ~~~                         ",
-  "                  ~~                                      ",
-  "                                           #####          ",
-  "                        #######                           ",
-  "         E                                                ",
-  "                                                          ",
-  "   P  s #######       ^^^         X       ####      S   d ",
-  "#########     ###               ######    #####   ########",
-  "#########                   ~~                     #######",
-  "#########      #######                  ##################",
-  "##########################################################",
-  "##########################################################",
-  "##########################################################",
+  "                                                                          ",
+  "                                                                          ",
+  "             qwe               qwe     QWT            u                   ",
+  "             adf        #######adf     ADF      U     i              u    ",
+  "             cjh               cjh     ZJC      I     o              i    ",
+  "              k                 k       1       O  xmml              o    ",
+  "              n              xmmbMMR    1       6     n              rMMR ",
+  "   P          n                 n     xm4MR     7     n              n    ",
+  "########  ####n                 n     E 2       7     n  ##########  n  S ",
+  "########  ################################################################",
+  "##########################################################################",
+  "##########################################################################",
+  "##########################################################################",
 ];
 
-const TERRAIN_TOP_TILES_NO_SUPPORT = {
-  single: "grass_single",
-  left: "grass_1",
-  center: "grass_2",
-  right: "grass_3",
+const TERRAIN_NO_SUPPORT_TILES = {
+  single: "soil_single",
+  left: "soil_single_left",
+  center: "soil_single_center",
+  right: "soil_single_right",
 };
-const TERRAIN_TOP_TILES_WITH_SUPPORT = {
-  single: "grass_single_1",
-  left: "grass_4",
-  center: "grass_5",
-  right: "grass_6",
+
+const TERRAIN_TOP_TILES = {
+  single: "soil_top_multi_single",
+  left: "soil_top_left",
+  center: "soil_top_center",
+  right: "soil_top_right",
+};
+
+const TERRAIN_CENTER_TILES = {
+  single: "soil_center_single",
+  left: "soil_center_left",
+  center: "soil_center_center",
+  right: "soil_center_right",
 };
 
 const DECORATION_BY_CHAR = Object.freeze({
-  t: { sprite: "tree_1", scale: 2 },
-  c: { sprite: "plant_cactus", scale: 2 },
-  g: { sprite: "plant_1", scale: 2 },
-  ">": { sprite: "sign_arrow_r", scale: 2 },
-  "<": { sprite: "sign_arrow_l", scale: 2 },
-  s: { sprite: "sign_board_3", scale: 2 },
-  o: { sprite: "obstacle_torch_red", scale: 2 },
-  d: { sprite: "door_1", scale: 2 },
+  s: { sprite: "farm_sign_post", z: 2 },
 });
+
+const TREE_FAMILY_YELLOW = "yellow";
+const TREE_FAMILY_GREEN = "green";
+
+const TREE_CANOPY_TILE_BY_CHAR = Object.freeze({
+  q: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_top_left" },
+  w: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_top_center" },
+  e: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_top_right" },
+  a: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_mid_left" },
+  d: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_mid_center" },
+  f: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_mid_right" },
+  c: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_bottom_left" },
+  j: { family: TREE_FAMILY_YELLOW, sprite: "tree_large_canopy_connector" },
+  g: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_bottom_center" },
+  h: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_wide_bottom_right" },
+  t: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_top" },
+  u: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_upper" },
+  i: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_lower" },
+  o: { family: TREE_FAMILY_YELLOW, sprite: "tree_crown_single_bottom" },
+  Q: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_top_left" },
+  W: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_top_center" },
+  T: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_top_right" },
+  A: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_upper_left" },
+  D: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_upper_center" },
+  F: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_upper_right" },
+  Z: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_lower_left" },
+  X: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_lower_center" },
+  C: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_lower_right" },
+  V: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_horizontal_left" },
+  G: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_horizontal_center" },
+  H: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_horizontal_right" },
+  J: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_canopy_connector" },
+  Y: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_top" },
+  U: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_upper" },
+  I: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_lower" },
+  O: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_bottom" },
+});
+
+const TREE_TRUNK_TILE_BY_CHAR = Object.freeze({
+  n: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_plain" },
+  k: { family: TREE_FAMILY_YELLOW, sprite: "tree_large_trunk_top" },
+  b: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_branch_both" },
+  l: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_branch_left" },
+  r: { family: TREE_FAMILY_YELLOW, sprite: "tree_trunk_branch_right" },
+  1: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_top" },
+  2: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_plain" },
+  4: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_branch_both" },
+  5: { family: TREE_FAMILY_GREEN, sprite: "base_tree_wide_trunk_branch_right" },
+  6: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_trunk_top" },
+  7: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_trunk_plain" },
+  8: { family: TREE_FAMILY_GREEN, sprite: "base_tree_single_trunk_branch_left" },
+});
+
+const TREE_TRUNK_CHARS = new Set(Object.keys(TREE_TRUNK_TILE_BY_CHAR));
+const LEFT_BRANCH_CONNECTOR_CHARS = new Set(["b", "l", "4", "8"]);
+const RIGHT_BRANCH_CONNECTOR_CHARS = new Set(["b", "r", "4", "5"]);
+const BRANCH_CONNECTOR_CHARS = new Set([
+  ...LEFT_BRANCH_CONNECTOR_CHARS,
+  ...RIGHT_BRANCH_CONNECTOR_CHARS,
+]);
 
 function normalizeAsciiMap(lines) {
   const cols = Math.max(...lines.map((line) => line.length));
@@ -77,8 +139,8 @@ function buildTerrainColliderRects(mapLines) {
       while (col + 1 < line.length && line[col + 1] === "#") {
         col += 1;
       }
-      const end = col;
-      runs.push({ x0: start, x1: end });
+
+      runs.push({ x0: start, x1: col });
       col += 1;
     }
 
@@ -113,89 +175,339 @@ function buildTerrainColliderRects(mapLines) {
   return finalized;
 }
 
-function addSky(k, levelWidth) {
-  const skyExtraHeight = GAME_CONFIG.tile * 12;
+function addFarmBackdrop(k, levelWidth) {
+  const sceneHeight = k.height() + GAME_CONFIG.tile * 10;
 
   k.add([
     k.pos(0, 0),
-    k.sprite("kenneyBg", { frame: 0 }),
-    k.scale(
-      k.vec2(
-        levelWidth / GAME_CONFIG.bgTile,
-        (k.height() + skyExtraHeight) / GAME_CONFIG.bgTile,
-      ),
-    ),
-    k.z(-30),
+    k.rect(levelWidth, sceneHeight),
+    k.color(236, 181, 120),
+    k.z(-40),
   ]);
 
-  const cloudCopies = Math.ceil(levelWidth / (GAME_CONFIG.bgTile * 4)) + 1;
-
-  for (let i = 0; i < cloudCopies; i++) {
-    k.add([
-      k.pos(i * GAME_CONFIG.bgTile * 4 - 40, 200),
-      k.sprite("kenneyBg", { frame: 8 }),
-      k.scale(2),
-      k.opacity(0.55),
-      k.z(-29),
-    ]);
-
-    k.add([
-      k.pos(i * GAME_CONFIG.bgTile * 4 - 20, 255),
-      k.sprite("kenneyBg", { frame: 10 }),
-      k.scale(2),
-      k.opacity(0.75),
-      k.z(-28),
-    ]);
-  }
-}
-
-function addSpikeObstacle(k, x, y, count = 2) {
-  for (let i = 0; i < count; i++) {
-    k.add([
-      k.pos(x + i * GAME_CONFIG.tile, y),
-      k.sprite(getEnvironmentTileSprite("spikes")),
-      k.area(),
-      k.body({ isStatic: true }),
-      TAGS.hazard,
-      TAGS.spike,
-    ]);
-  }
-}
-
-function addCloudPlatform(k, x, y, widthInTiles = 3) {
   k.add([
-    k.pos(x, y + GAME_CONFIG.tile / 2),
-    k.rect(widthInTiles * GAME_CONFIG.tile, GAME_CONFIG.tile / 2),
-    k.area(),
-    k.body({ isStatic: true }),
-    k.opacity(0),
+    k.pos(0, 190),
+    k.rect(levelWidth, 110),
+    k.color(252, 224, 190),
+    k.z(-39),
   ]);
 
-  for (let i = 0; i < widthInTiles; i++) {
-    const spriteName =
-      widthInTiles === 1
-        ? "cloud_white_s"
-        : i === 0
-          ? "cloud_white_l"
-          : i === widthInTiles - 1
-            ? "cloud_white_r"
-            : "cloud_white_c";
+  k.add([
+    k.pos(0, 265),
+    k.rect(levelWidth, 150),
+    k.color(219, 179, 163),
+    k.z(-38),
+  ]);
 
-    k.add([
-      k.pos(x + i * GAME_CONFIG.tile, y),
-      k.sprite(getEnvironmentTileSprite(spriteName)),
-      k.z(1),
-    ]);
-  }
+  k.add([
+    k.pos(GAME_CONFIG.tile * 4, 282),
+    k.rect(GAME_CONFIG.tile * 12, GAME_CONFIG.tile * 3),
+    k.color(205, 164, 148),
+    k.z(-37),
+  ]);
+
+  k.add([
+    k.pos(GAME_CONFIG.tile * 24, 260),
+    k.rect(GAME_CONFIG.tile * 14, GAME_CONFIG.tile * 4),
+    k.color(205, 164, 148),
+    k.z(-37),
+  ]);
+
+  k.add([
+    k.pos(GAME_CONFIG.tile * 49, 275),
+    k.rect(GAME_CONFIG.tile * 11, GAME_CONFIG.tile * 3),
+    k.color(205, 164, 148),
+    k.z(-37),
+  ]);
+
+  k.add([
+    k.pos(0, k.height() - 16),
+    k.rect(levelWidth, 16),
+    k.color(90, 205, 235),
+    k.z(-37),
+  ]);
 }
 
-function addDecoration(k, spriteName, x, y, scale = 2) {
+function addFarmSprite(k, spriteName, x, y, z = 1) {
+  return k.add([
+    k.pos(x, y),
+    k.sprite(getEnvironmentTileFarmSprite(spriteName)),
+    k.z(z),
+  ]);
+}
+
+function addBaseEnvSprite(k, spriteName, x, y, z = 1) {
   return k.add([
     k.pos(x, y),
     k.sprite(getEnvironmentTileSprite(spriteName)),
-    k.scale(scale),
-    k.z(2),
+    k.z(z),
   ]);
+}
+
+function addGroundDecoration(k, spriteName, x, surfaceY, z = 2) {
+  return addFarmSprite(k, spriteName, x, surfaceY - GAME_CONFIG.tile, z);
+}
+
+function addHayBaleWide(k, x, surfaceY, z = 2) {
+  addGroundDecoration(k, "hay_bale_left", x, surfaceY, z);
+  addGroundDecoration(k, "hay_bale_right", x + GAME_CONFIG.tile, surfaceY, z);
+}
+
+function addTreeSprite(k, family, spriteName, x, y, z) {
+  return family === TREE_FAMILY_GREEN
+    ? addBaseEnvSprite(k, spriteName, x, y, z)
+    : addFarmSprite(k, spriteName, x, y, z);
+}
+
+function addTreeTrunkColliderCell(k, x, y) {
+  k.add([
+    k.pos(x, y),
+    k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile),
+    k.area(),
+    k.body({ isStatic: true }),
+    k.opacity(0),
+    TERRAIN_TAG,
+  ]);
+}
+
+function addBranchPlatformCollider(k, x, y, widthInTiles = 3) {
+  k.add([
+    k.pos(x, y + GAME_CONFIG.tile * 0.58),
+    k.rect(widthInTiles * GAME_CONFIG.tile, GAME_CONFIG.tile * 0.22),
+    k.area(),
+    k.body({ isStatic: true }),
+    k.opacity(0),
+    TERRAIN_TAG,
+  ]);
+}
+
+function isBranchConnectorForLeftSide(cell) {
+  return LEFT_BRANCH_CONNECTOR_CHARS.has(cell);
+}
+
+function isBranchConnectorForRightSide(cell) {
+  return RIGHT_BRANCH_CONNECTOR_CHARS.has(cell);
+}
+
+function getBranchSprite(family, branchCell) {
+  if (family === TREE_FAMILY_GREEN) {
+    return branchCell === "L"
+      ? "base_tree_branch_tip_left"
+      : branchCell === "R"
+        ? "base_tree_branch_tip_right"
+        : branchCell === "x"
+          ? "base_tree_branch_leaf_end_left"
+          : branchCell === "m"
+            ? "base_tree_branch_leaf_center"
+            : "base_tree_branch_horizontal";
+  }
+
+  return branchCell === "L"
+    ? "tree_branch_stub"
+    : branchCell === "R"
+      ? "tree_branch_tip"
+      : branchCell === "x"
+        ? "tree_branch_leaf_end_left"
+        : branchCell === "m"
+          ? "tree_branch_leaf_center"
+          : "tree_branch_horizontal";
+}
+
+function renderBranchFromConnector(k, mapLines, row, col, direction, mapOffsetY, family) {
+  const step = direction === "left" ? -1 : 1;
+  const endCells = direction === "left" ? new Set(["L", "x"]) : new Set(["R"]);
+  const centerCells = direction === "left" ? new Set(["M", "m"]) : new Set(["M"]);
+  const firstCol = col + step;
+  const firstCell = mapCharAt(mapLines, row, firstCol);
+
+  if (!centerCells.has(firstCell)) {
+    return false;
+  }
+
+  let cursor = firstCol;
+  const branchCols = [cursor];
+
+  while (centerCells.has(mapCharAt(mapLines, row, cursor + step))) {
+    cursor += step;
+    branchCols.push(cursor);
+  }
+
+  const tipCol = cursor + step;
+  if (!endCells.has(mapCharAt(mapLines, row, tipCol))) {
+    return false;
+  }
+
+  branchCols.push(tipCol);
+
+  branchCols.forEach((branchCol) => {
+    const branchCell = mapCharAt(mapLines, row, branchCol);
+    addTreeSprite(
+      k,
+      family,
+      getBranchSprite(family, branchCell),
+      branchCol * GAME_CONFIG.tile,
+      mapOffsetY + row * GAME_CONFIG.tile,
+      -2,
+    );
+  });
+
+  const startCol = Math.min(...branchCols);
+  addBranchPlatformCollider(
+    k,
+    startCol * GAME_CONFIG.tile,
+    mapOffsetY + row * GAME_CONFIG.tile,
+    branchCols.length,
+  );
+
+  return true;
+}
+
+function addGreenhouseBlock(k, x, groundY, rows, z = -2) {
+  const topY = groundY - rows.length * GAME_CONFIG.tile;
+
+  rows.forEach((rowSprites, rowIndex) => {
+    rowSprites.forEach((spriteName, colIndex) => {
+      addFarmSprite(
+        k,
+        spriteName,
+        x + colIndex * GAME_CONFIG.tile,
+        topY + rowIndex * GAME_CONFIG.tile,
+        z,
+      );
+    });
+  });
+}
+
+function addGreenhouseOpen(k, x, groundY) {
+  addGreenhouseBlock(
+    k,
+    x,
+    groundY,
+    [
+      [
+        "greenhouse_open_top_left",
+        "greenhouse_open_top_center_left",
+        "greenhouse_open_top_center_right",
+        "greenhouse_open_top_right",
+      ],
+      [
+        "greenhouse_open_mid_left",
+        "greenhouse_open_mid_center_left",
+        "greenhouse_open_mid_center_right",
+        "greenhouse_open_mid_right",
+      ],
+      [
+        "greenhouse_open_bottom_left",
+        "greenhouse_open_bottom_center_left",
+        "greenhouse_open_bottom_center_right",
+        "greenhouse_open_bottom_right",
+      ],
+    ],
+  );
+}
+
+function addGreenhouseClosed(k, x, groundY) {
+  addGreenhouseBlock(
+    k,
+    x,
+    groundY,
+    [
+      [
+        "greenhouse_closed_top_left",
+        "greenhouse_closed_top_center_left",
+        "greenhouse_closed_top_center_right",
+        "greenhouse_closed_top_right",
+      ],
+      [
+        "greenhouse_closed_mid_left",
+        "greenhouse_closed_mid_center_left",
+        "greenhouse_closed_mid_center_right",
+        "greenhouse_closed_mid_right",
+      ],
+      [
+        "greenhouse_closed_bottom_left",
+        "greenhouse_closed_bottom_center_left",
+        "greenhouse_closed_bottom_center_right",
+        "greenhouse_closed_bottom_right",
+      ],
+    ],
+  );
+}
+
+function addDecorativeSoilPatch(k, startCol, topRow, width, height, mapOffsetY, z = -1) {
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const hasTileLeft = col > 0;
+      const hasTileRight = col < width - 1;
+      const spriteName =
+        row === 0 && height === 1
+          ? getTerrainRowSpriteName(TERRAIN_NO_SUPPORT_TILES, hasTileLeft, hasTileRight)
+          : row === 0
+            ? getTerrainRowSpriteName(TERRAIN_TOP_TILES, hasTileLeft, hasTileRight)
+            : row < height - 1
+              ? getTerrainRowSpriteName(
+                  TERRAIN_CENTER_TILES,
+                  hasTileLeft,
+                  hasTileRight,
+                )
+              : getTerrainRowSpriteName(
+                  TERRAIN_NO_SUPPORT_TILES,
+                  hasTileLeft,
+                  hasTileRight,
+                );
+
+      addFarmSprite(
+        k,
+        spriteName,
+        (startCol + col) * GAME_CONFIG.tile,
+        mapOffsetY + (topRow + row) * GAME_CONFIG.tile,
+        z,
+      );
+    }
+  }
+}
+
+function addFarmScenery(k, mapOffsetY) {
+  const tile = GAME_CONFIG.tile;
+  const rowY = (row) => mapOffsetY + row * tile;
+  const groundSurfaceY = rowY(9);
+  const upperSurfaceY = rowY(8);
+
+  addDecorativeSoilPatch(k, 0, 9, 4, 2, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 18, 8, 5, 2, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 31, 9, 5, 1, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 50, 9, 4, 1, mapOffsetY, -1);
+  addGreenhouseOpen(k, tile * 54, groundSurfaceY);
+  addGreenhouseClosed(k, tile * 58, groundSurfaceY);
+
+  addGroundDecoration(k, "pumpkin", tile * 1, upperSurfaceY);
+  addGroundDecoration(k, "pumpkin_carved", tile * 3, upperSurfaceY);
+  addGroundDecoration(k, "sunflower", tile * 7, upperSurfaceY);
+  addGroundDecoration(k, "hay_bale_single", tile * 24, upperSurfaceY);
+  addGroundDecoration(k, "hay_bale_single", tile * 24, upperSurfaceY - tile);
+  addHayBaleWide(k, tile * 26, upperSurfaceY);
+  addGroundDecoration(k, "sprout_small", tile * 17, upperSurfaceY);
+  addGroundDecoration(k, "sprout_leafy", tile * 19, upperSurfaceY);
+  addGroundDecoration(k, "crop_stump", tile * 22, upperSurfaceY);
+
+  addGroundDecoration(k, "crop_leaf_small", tile * 28, groundSurfaceY);
+  addGroundDecoration(k, "crop_leaf_tall", tile * 30, groundSurfaceY);
+  addGroundDecoration(k, "crop_carrot", tile * 34, groundSurfaceY);
+  addGroundDecoration(k, "crop_tomatoes", tile * 36, groundSurfaceY);
+  addGroundDecoration(k, "crop_corn", tile * 44, groundSurfaceY);
+  addGroundDecoration(k, "crop_leaf_small", tile * 45, groundSurfaceY);
+  addGroundDecoration(k, "shovel", tile * 46, groundSurfaceY);
+  addFarmSprite(k, "hanging_pot", tile * 61, groundSurfaceY - tile * 4, -1);
+
+  addGroundDecoration(k, "crop_wheat_tall", tile * 53, groundSurfaceY);
+  addGroundDecoration(k, "crop_vine", tile * 55, groundSurfaceY);
+  addGroundDecoration(k, "pumpkin", tile * 67, groundSurfaceY);
+  addGroundDecoration(k, "crop_dry_large", tile * 63, groundSurfaceY);
+  addGroundDecoration(k, "crop_corn_tall", tile * 65, groundSurfaceY);
+}
+
+function addDecoration(k, spriteName, x, y, z = 2) {
+  return addFarmSprite(k, spriteName, x, y, z);
 }
 
 function addTownfolkNpc(k, x, y) {
@@ -215,27 +527,7 @@ function addTownfolkNpc(k, x, y) {
   return npc;
 }
 
-function getFillSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight) {
-  if (!hasTerrainLeft && !hasTerrainRight) {
-    return hasTerrainBelow ? "ground_fill_2" : "ground_fill_6";
-  }
-
-  if (!hasTerrainLeft && hasTerrainRight) {
-    return hasTerrainBelow ? "ground_fill_3" : "ground_fill_7";
-  }
-
-  if (hasTerrainLeft && hasTerrainRight) {
-    return hasTerrainBelow ? "ground_fill_4" : "ground_fill_8";
-  }
-
-  return hasTerrainBelow ? "ground_fill_5" : "ground_fill_9";
-}
-
-function getTopSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight) {
-  const tiles = hasTerrainBelow
-    ? TERRAIN_TOP_TILES_WITH_SUPPORT
-    : TERRAIN_TOP_TILES_NO_SUPPORT;
-
+function getTerrainRowSpriteName(tiles, hasTerrainLeft, hasTerrainRight) {
   if (!hasTerrainLeft && !hasTerrainRight) {
     return tiles.single;
   }
@@ -255,21 +547,37 @@ function addTerrainTile(
   k,
   x,
   y,
-  col,
-  row,
   isTop,
   hasTerrainBelow,
   hasTerrainLeft,
   hasTerrainRight,
 ) {
-  const spriteName = isTop
-    ? getTopSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight)
-    : getFillSpriteName(hasTerrainBelow, hasTerrainLeft, hasTerrainRight);
+  let spriteName;
+
+  if (!hasTerrainBelow) {
+    spriteName = getTerrainRowSpriteName(
+      TERRAIN_NO_SUPPORT_TILES,
+      hasTerrainLeft,
+      hasTerrainRight,
+    );
+  } else if (isTop) {
+    spriteName = getTerrainRowSpriteName(
+      TERRAIN_TOP_TILES,
+      hasTerrainLeft,
+      hasTerrainRight,
+    );
+  } else {
+    spriteName = getTerrainRowSpriteName(
+      TERRAIN_CENTER_TILES,
+      hasTerrainLeft,
+      hasTerrainRight,
+    );
+  }
 
   k.add([
     k.pos(x, y),
-    k.sprite(getEnvironmentTileSprite(spriteName)),
-    k.z(-1),
+    k.sprite(getEnvironmentTileFarmSprite(spriteName)),
+    k.z(0),
   ]);
 }
 
@@ -282,7 +590,6 @@ function addPatrolEnemy(
   enemyName = "alien_1",
   animationSpeed = 8,
   shouldTurn = null,
-  ignoreHazards = false,
   isDialogOpen = () => false,
 ) {
   const animationFrames = getEnemySpriteFrames(enemyName);
@@ -290,7 +597,7 @@ function addPatrolEnemy(
     k.pos(x, y),
     k.sprite(animationFrames[0]),
     k.scale(1.5),
-    k.area(ignoreHazards ? { collisionIgnore: [TAGS.hazard] } : undefined),
+    k.area(),
     k.body(),
     k.z(4),
     TAGS.hazard,
@@ -316,19 +623,6 @@ function addPatrolEnemy(
     enemy.pos.x += wasMovingRight ? -2 : 2;
     turnCooldown = 0.12;
   });
-
-  if (!ignoreHazards) {
-    enemy.onCollide(TAGS.spike, () => {
-      if (turnCooldown > 0) return;
-      if (!enemy.isGrounded()) return;
-
-      const wasMovingRight = direction > 0;
-      direction *= -1;
-      enemy.vel.x = 0;
-      enemy.pos.x += wasMovingRight ? -2 : 2;
-      turnCooldown = 0.12;
-    });
-  }
 
   enemy.onUpdate(() => {
     if (isDialogOpen()) {
@@ -390,7 +684,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
   const floorStartRow = rows - 3;
   const mapOffsetY = floorY - floorStartRow * GAME_CONFIG.tile;
 
-  addSky(k, levelWidth);
+  addFarmBackdrop(k, levelWidth);
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
@@ -403,7 +697,12 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
 
   function hasGroundAtWorld(worldX, worldY) {
     const cell = cellAtWorld(worldX, worldY);
-    return cell === "#" || cell === "~";
+    return (
+      cell === "#" ||
+      BRANCH_CHARS.has(cell) ||
+      TREE_TRUNK_CHARS.has(cell) ||
+      BRANCH_CONNECTOR_CHARS.has(cell)
+    );
   }
 
   function shouldEnemyTurn(enemy, direction, bbox) {
@@ -416,7 +715,11 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     const wallCell = cellAtWorld(wallX, wallY);
 
     const noGroundAhead = !hasGroundAtWorld(footX, footY);
-    const wallAhead = wallCell === "#";
+    const wallAhead =
+      wallCell === "#" ||
+      TREE_TRUNK_CHARS.has(wallCell) ||
+      BRANCH_CHARS.has(wallCell) ||
+      BRANCH_CONNECTOR_CHARS.has(wallCell);
     return noGroundAhead || wallAhead;
   }
 
@@ -435,44 +738,65 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
           k,
           x,
           y,
-          col,
-          row,
           isTop,
           hasTerrainBelow,
           hasTerrainLeft,
           hasTerrainRight,
         );
-      } else if (cell === "^") {
-        addSpikeObstacle(k, x, y, 1);
-      } else if (cell === "~") {
-        const isStartOfRun = mapCharAt(mapLines, row, col - 1) !== "~";
-        if (isStartOfRun) {
-          let runLength = 1;
-          while (mapCharAt(mapLines, row, col + runLength) === "~") {
-            runLength += 1;
-          }
-          addCloudPlatform(k, x, y, runLength);
+      } else if (TREE_CANOPY_TILE_BY_CHAR[cell]) {
+        const tileDef = TREE_CANOPY_TILE_BY_CHAR[cell];
+        addTreeSprite(k, tileDef.family, tileDef.sprite, x, y, -4);
+      } else if (TREE_TRUNK_CHARS.has(cell)) {
+        const tileDef = TREE_TRUNK_TILE_BY_CHAR[cell];
+        addTreeSprite(k, tileDef.family, tileDef.sprite, x, y, -3);
+        addTreeTrunkColliderCell(k, x, y);
+
+        if (isBranchConnectorForLeftSide(cell)) {
+          renderBranchFromConnector(
+            k,
+            mapLines,
+            row,
+            col,
+            "left",
+            mapOffsetY,
+            tileDef.family,
+          );
         }
+        if (isBranchConnectorForRightSide(cell)) {
+          renderBranchFromConnector(
+            k,
+            mapLines,
+            row,
+            col,
+            "right",
+            mapOffsetY,
+            tileDef.family,
+          );
+        }
+      } else if (BRANCH_CHARS.has(cell)) {
+        // Branch tiles are rendered only through adjacent trunk-branch connectors.
       } else if (cell === "P") {
         playerStart = k.vec2(x, y - GAME_CONFIG.tile);
       } else if (cell === "S") {
         npcSpawnPos = k.vec2(x, y);
-      } else if (cell === "s") {
-        const decoration = DECORATION_BY_CHAR[cell];
-        addDecoration(k, decoration.sprite, x, y, decoration.scale);
-        k.add([
-          k.pos(x, y - GAME_CONFIG.tile),
-          k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
-          k.area(),
-          k.opacity(0),
-          TAGS.dialogTrigger,
-        ]);
       } else if (DECORATION_BY_CHAR[cell]) {
         const decoration = DECORATION_BY_CHAR[cell];
-        addDecoration(k, decoration.sprite, x, y, decoration.scale);
+        addDecoration(k, decoration.sprite, x, y, decoration.z);
+
+        if (cell === "s") {
+          k.add([
+            k.pos(x, y - GAME_CONFIG.tile),
+            k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
+            k.area(),
+            k.opacity(0),
+            TAGS.dialogTrigger,
+          ]);
+        }
       }
     }
   }
+
+  addFarmScenery(k, mapOffsetY);
 
   const terrainColliderRects = buildTerrainColliderRects(mapLines);
   for (const rect of terrainColliderRects) {
@@ -493,37 +817,21 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const cell = mapLines[row][col];
+      if (mapLines[row][col] !== "E") continue;
+
       const x = col * GAME_CONFIG.tile;
       const y = mapOffsetY + row * GAME_CONFIG.tile;
-
-      if (cell === "E") {
-        addPatrolEnemy(
-          k,
-          x,
-          y - GAME_CONFIG.tile * 2,
-          GAME_CONFIG.tile * 7,
-          95,
-          "alien_1",
-          8,
-          shouldEnemyTurn,
-          false,
-          isDialogOpen,
-        );
-      } else if (cell === "X") {
-        addPatrolEnemy(
-          k,
-          x,
-          y - GAME_CONFIG.tile * 2,
-          GAME_CONFIG.tile * 6,
-          80,
-          "spike",
-          8,
-          shouldEnemyTurn,
-          true,
-          isDialogOpen,
-        );
-      }
+      addPatrolEnemy(
+        k,
+        x,
+        y - GAME_CONFIG.tile * 2,
+        GAME_CONFIG.tile * 7,
+        95,
+        "alien_1",
+        8,
+        shouldEnemyTurn,
+        isDialogOpen,
+      );
     }
   }
 
