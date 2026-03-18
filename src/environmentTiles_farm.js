@@ -31,6 +31,8 @@ export const FARM_ENV_TILE_ORDER = Object.freeze({
   soil_top_left: 17,
   soil_top_center: 18,
   soil_top_right: 19,
+  soil_hill_left: 24,
+  soil_hill_right: 25,
   sunflower: 20,
   shovel: 21,
   tree_crown_single_upper: 28,

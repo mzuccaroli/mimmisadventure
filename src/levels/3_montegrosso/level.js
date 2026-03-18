@@ -262,21 +262,33 @@ function addDecorativeSoilPatch(k, startCol, topRow, width, height, mapOffsetY, 
       const hasTileLeft = col > 0;
       const hasTileRight = col < width - 1;
       const spriteName =
-        row === 0 && height === 1
-          ? getTerrainRowSpriteName(TERRAIN_NO_SUPPORT_TILES, hasTileLeft, hasTileRight)
-          : row === 0
-            ? getTerrainRowSpriteName(TERRAIN_TOP_TILES, hasTileLeft, hasTileRight)
-            : row < height - 1
-              ? getTerrainRowSpriteName(
-                  TERRAIN_CENTER_TILES,
-                  hasTileLeft,
-                  hasTileRight,
-                )
-              : getTerrainRowSpriteName(
-                  TERRAIN_NO_SUPPORT_TILES,
-                  hasTileLeft,
-                  hasTileRight,
-                );
+        row === 0
+          ? !hasTileLeft && hasTileRight
+            ? "soil_hill_left"
+            : hasTileLeft && !hasTileRight
+              ? "soil_hill_right"
+              : height === 1
+                ? getTerrainRowSpriteName(
+                    TERRAIN_NO_SUPPORT_TILES,
+                    hasTileLeft,
+                    hasTileRight,
+                  )
+                : getTerrainRowSpriteName(
+                    TERRAIN_TOP_TILES,
+                    hasTileLeft,
+                    hasTileRight,
+                  )
+          : row < height - 1
+            ? getTerrainRowSpriteName(
+                TERRAIN_CENTER_TILES,
+                hasTileLeft,
+                hasTileRight,
+              )
+            : getTerrainRowSpriteName(
+                TERRAIN_NO_SUPPORT_TILES,
+                hasTileLeft,
+                hasTileRight,
+              );
 
       addFarmSprite(
         k,
@@ -296,9 +308,16 @@ function addFarmScenery(k, mapOffsetY) {
   const upperSurfaceY = rowY(8);
 
   addDecorativeSoilPatch(k, 0, 9, 4, 2, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 5, 8, 7, 3, mapOffsetY, -3);
+  addDecorativeSoilPatch(k, 13, 7, 5, 4, mapOffsetY, -3);
   addDecorativeSoilPatch(k, 18, 8, 5, 2, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 24, 9, 6, 2, mapOffsetY, -2);
   addDecorativeSoilPatch(k, 31, 9, 5, 1, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 37, 8, 8, 3, mapOffsetY, -3);
+  addDecorativeSoilPatch(k, 46, 7, 6, 4, mapOffsetY, -3);
   addDecorativeSoilPatch(k, 50, 9, 4, 1, mapOffsetY, -1);
+  addDecorativeSoilPatch(k, 55, 8, 7, 2, mapOffsetY, -3);
+  addDecorativeSoilPatch(k, 62, 7, 8, 4, mapOffsetY, -3);
   addGreenhouseOpen(k, tile * 54, groundSurfaceY);
   addGreenhouseClosed(k, tile * 58, groundSurfaceY);
 

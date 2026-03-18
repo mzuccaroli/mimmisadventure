@@ -4,6 +4,9 @@ import { getEnvironmentTileFarmSprite } from "../../environmentTiles_farm.js";
 
 const TREE_FAMILY_YELLOW = "yellow";
 const TREE_FAMILY_GREEN = "green";
+const TREE_CANOPY_Z = 1;
+const TREE_TRUNK_Z = 2;
+const TREE_BRANCH_Z = 2;
 
 const TREE_BRANCH_CHARS_INTERNAL = new Set(["L", "M", "R", "x", "m"]);
 
@@ -178,7 +181,7 @@ function renderBranchFromConnector(k, mapLines, row, col, direction, mapOffsetY,
       getBranchSprite(family, branchCell),
       branchCol * GAME_CONFIG.tile,
       mapOffsetY + row * GAME_CONFIG.tile,
-      -2,
+      TREE_BRANCH_Z,
     );
   });
 
@@ -209,7 +212,7 @@ export function renderAsciiTreeCell({ k, mapLines, row, col, mapOffsetY, terrain
       tileDef.sprite,
       col * GAME_CONFIG.tile,
       mapOffsetY + row * GAME_CONFIG.tile,
-      -4,
+      TREE_CANOPY_Z,
     );
     return true;
   }
@@ -219,7 +222,7 @@ export function renderAsciiTreeCell({ k, mapLines, row, col, mapOffsetY, terrain
     const x = col * GAME_CONFIG.tile;
     const y = mapOffsetY + row * GAME_CONFIG.tile;
 
-    addTreeSprite(k, tileDef.family, tileDef.sprite, x, y, -3);
+    addTreeSprite(k, tileDef.family, tileDef.sprite, x, y, TREE_TRUNK_Z);
     addTreeTrunkColliderCell(k, x, y, terrainTag);
 
     if (isBranchConnectorForLeftSide(cell)) {
