@@ -5,9 +5,9 @@ const SIGN_DIALOG_PAGES = [
 ];
 
 const LEVEL_GOAL_DIALOG_PAGES = [
-  "Saggio di Montegrosso:\nBen arrivata, Mimmi.",
-  "Saggio di Montegrosso: ...\nAdesso il borgo ha finalmente l'aspetto dei campi che volevamo.",
-  "Saggio di Montegrosso: ...\nPossiamo ampliare il livello con nuove serre, sentieri e salti.",
+  "Brigante di Montegrosso:\nBen arrivata, Mimmi.",
+  "Brigante di Montegrosso: ...\nAdesso il borgo ha finalmente l'aspetto dei campi che volevamo.",
+  "Brigante di Montegrosso: ...\nPossiamo ampliare il livello con nuove serre, sentieri e salti.",
 ];
 
 export function getLevelThreeMontegrossoSignDialogPages() {

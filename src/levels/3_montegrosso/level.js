@@ -58,7 +58,7 @@ const ENEMY_BY_CHAR = Object.freeze({
 
 const LEVEL_THREE_ASCII = [
   "               ^                         qwe                                ^                          QWT                                                                                  qwe              ^           |          ",
-  "                                         adf^                               u                          ADF              ^                                                                  adf                             U        ",
+  "                                         adf^                               u                          ADF              ^                                                                   adf                             U       ",
   "   P         qwe u                  qwe  cjh                                i        QWT               ZJC        qwe U                      QWT                                            cjh                             I       ",
   "             adf i      E           adf   k                U                o        ADF                1   E     adf I                      ADF                            u                k              U               O       ",
   "             cjh o      @@@@        cjh   n                I     |          n        ZJC                1   %%%%% cjh O                      ZJC            &&&&            i                n      %%%%%   I               6       ",
@@ -626,7 +626,7 @@ function addTownfolkNpc(k, x, y) {
 
   const npc = k.add([
     k.pos(x, npcPosY),
-    k.sprite("npcTownfolkOldM001", { anim: "front" }),
+    k.sprite("npcMageM01Dark", { anim: "front" }),
     k.scale(NPC_SCALE),
     k.area(),
     k.z(3),
