@@ -13,6 +13,7 @@ export function setupLivesSystem(k, player, options) {
   let canTakeDamage = true;
   let gameOver = false;
   let respawning = false;
+  let currentRespawnPos = k.vec2(respawnPos.x, respawnPos.y);
 
   function clearHeartIcons() {
     while (heartIcons.length > 0) {
@@ -130,7 +131,7 @@ export function setupLivesSystem(k, player, options) {
         transitionCtrl.cancel();
         player.angle = 0;
         player.frame = sideFrame;
-        player.pos = k.vec2(respawnPos.x, respawnPos.y);
+        player.pos = k.vec2(currentRespawnPos.x, currentRespawnPos.y);
         player.vel = k.vec2(0, 0);
         respawning = false;
 
@@ -147,5 +148,8 @@ export function setupLivesSystem(k, player, options) {
     damagePlayer,
     isGameOver: () => gameOver,
     isRespawning: () => respawning,
+    setRespawnPos: (nextRespawnPos) => {
+      currentRespawnPos = k.vec2(nextRespawnPos.x, nextRespawnPos.y);
+    },
   };
 }

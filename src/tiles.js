@@ -24,6 +24,7 @@ export const TAGS = {
   hazard: "hazard",
   spike: "spike",
   dialogTrigger: "dialogTrigger",
+  checkpoint: "checkpoint",
 };
 
 export const TILE_FRAMES = {

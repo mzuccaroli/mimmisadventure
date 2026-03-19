@@ -335,12 +335,27 @@ export const ENV_TILE_SPRITES = Object.freeze(
   {
     ...createSpriteEntries(BASE_ENV_TILE_ORDER, ENV_TILE_ROOT),
     ...createSpriteEntries(TINY_TOWN_TILE_ORDER, TINY_TOWN_TILE_ROOT),
+    flag: {
+      sprite: spriteId("flag"),
+      path: `${ENV_TILE_ROOT}/flag-sheet.png`,
+      options: {
+        sliceX: 2,
+        sliceY: 1,
+        anims: {
+          wave: {
+            frames: [0, 1],
+            loop: true,
+            speed: 4,
+          },
+        },
+      },
+    },
   },
 );
 
 export function loadEnvironmentTileAssets(k) {
-  Object.values(ENV_TILE_SPRITES).forEach(({ sprite, path }) => {
-    k.loadSprite(sprite, path);
+  Object.values(ENV_TILE_SPRITES).forEach(({ sprite, path, options }) => {
+    k.loadSprite(sprite, path, options);
   });
 }
 

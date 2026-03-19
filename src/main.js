@@ -352,8 +352,89 @@ function playGoalCelebrationThenDialog() {
   });
 }
 
+function getEntityGlowCenter(entity) {
+  if (entity && typeof entity.worldArea === "function") {
+    const bbox = entity.worldArea().bbox();
+    return k.vec2(bbox.pos.x + bbox.width / 2, bbox.pos.y + bbox.height / 2);
+  }
+
+  return k.vec2(
+    entity.pos.x + GAME_CONFIG.tile / 2,
+    entity.pos.y + GAME_CONFIG.tile / 2,
+  );
+}
+
+function addCheckpointGlow(target, width, height, duration = 0.55, z = 9) {
+  const glow = k.add([
+    k.pos(0, 0),
+    k.anchor("center"),
+    k.rect(width, height),
+    k.scale(1),
+    k.color(255, 244, 173),
+    k.opacity(0.45),
+    k.z(z),
+  ]);
+
+  const startTime = k.time();
+  const ctrl = glow.onUpdate(() => {
+    const elapsed = k.time() - startTime;
+    const t = Math.min(1, elapsed / duration);
+    const wave = (Math.sin(elapsed * 26) + 1) * 0.5;
+
+    glow.pos = getEntityGlowCenter(target);
+    glow.opacity = (1 - t) * (0.2 + wave * 0.4);
+    glow.scale = k.vec2(1 + wave * 0.22);
+
+    if (t >= 1) {
+      ctrl.cancel();
+      glow.destroy();
+    }
+  });
+}
+
+function pulseCheckpointTarget(target, duration = 0.55) {
+  if (!target || typeof target.onUpdate !== "function") return;
+
+  const baseOpacity = typeof target.opacity === "number" ? target.opacity : 1;
+  const startTime = k.time();
+  const ctrl = target.onUpdate(() => {
+    const elapsed = k.time() - startTime;
+    const t = Math.min(1, elapsed / duration);
+    const wave = (Math.sin(elapsed * 26) + 1) * 0.5;
+    target.opacity = 0.7 + wave * 0.3;
+
+    if (t >= 1) {
+      target.opacity = baseOpacity;
+      ctrl.cancel();
+    }
+  });
+}
+
+function playCheckpointActivation(checkpoint) {
+  pulseCheckpointTarget(player);
+  addCheckpointGlow(
+    player,
+    GAME_CONFIG.tile * 1.35,
+    GAME_CONFIG.tile * 1.95,
+    0.55,
+    9,
+  );
+
+  if (checkpoint?.flagRef) {
+    pulseCheckpointTarget(checkpoint.flagRef);
+    addCheckpointGlow(
+      checkpoint.flagRef,
+      GAME_CONFIG.tile * 0.95,
+      GAME_CONFIG.tile * 1.25,
+      0.55,
+      8,
+    );
+  }
+}
+
 let reachedDialogTrigger = false;
 let reachedGoal = false;
+let reachedCheckpointIds = new Set();
 
 player.onCollide(TAGS.dialogTrigger, () => {
   if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
@@ -373,6 +454,19 @@ player.onCollide(TAGS.goal, () => {
   if (reachedGoal) return;
   reachedGoal = true;
   playGoalCelebrationThenDialog();
+});
+
+player.onCollide(TAGS.checkpoint, (checkpoint) => {
+  if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+  if (isDebugFlying()) return;
+  if (pipeTraversal.isPipeTraveling()) return;
+  if (ropeTraversal.isRopeHanging()) return;
+  if (!checkpoint?.checkpointId || !checkpoint?.respawnPos) return;
+  if (reachedCheckpointIds.has(checkpoint.checkpointId)) return;
+
+  reachedCheckpointIds.add(checkpoint.checkpointId);
+  lives.setRespawnPos(checkpoint.respawnPos);
+  playCheckpointActivation(checkpoint);
 });
 
 player.onCollide(TAGS.hazard, () => {

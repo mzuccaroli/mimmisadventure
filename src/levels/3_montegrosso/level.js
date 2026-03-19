@@ -65,7 +65,7 @@ const LEVEL_THREE_ASCII = [
   "              k  n      @@@@         k xmmbMMR             O                rMMR      1               xm4MR %%%%%  k  6                       1     E       &&&&            o                n      %%%%%   O            LMM8       ",
   "              n  n      @@@@      xmmbMMR n                6                n         1 ########        2   %%%%%  n  7                       1  ########   &&&&            rMMR             n      %%%%%   6  9            7       ",
   "              n  n      @@@@         n    n         E      7                n       xm4MR   E           2   %%%%%  n  7                     xm4MR           &&&&           #n###E##          n      %%%%%   7#######        7  S    ",
-  "              n  n   #####################n    9           7              E n         2                 2   ###### n                 E  ######2#################   9  ########7##########################   ########  E   9 7       ",
+  "              n  n   #####################n    9           7        *     E n         2                 2   ###### n                 E  ######2#################   9  ########7##########################   ########  E   9 7       ",
   "####################################################################################################################################################################################################################################",
   "####################################################################################################################################################################################################################################",
   "####################################################################################################################################################################################################################################",
@@ -135,7 +135,8 @@ const TERRAIN_CENTER_TILES = {
 };
 
 const DECORATION_BY_CHAR = Object.freeze({
-  s: { sprite: "farm_sign_post", z: 2 },
+  s: { sprite: "farm_sign_post", z: 2, source: "farm" },
+  "*": { sprite: "flag", z: 2, source: "env", anim: "wave" },
 });
 
 const BACKGROUND_HILL_SPECS = Object.freeze([
@@ -617,8 +618,22 @@ function addFarmScenery(k, mapLines, mapOffsetY) {
   });
 }
 
-function addDecoration(k, spriteName, x, y, z = 2) {
-  return addFarmSprite(k, spriteName, x, y, z);
+function addDecoration(k, decoration, x, y) {
+  const spriteName =
+    decoration.source === "env"
+      ? getEnvironmentTileSprite(decoration.sprite)
+      : getEnvironmentTileFarmSprite(decoration.sprite);
+
+  return k.add([
+    k.pos(x, y),
+    k.sprite(
+      spriteName,
+      decoration.anim ? { anim: decoration.anim } : undefined,
+    ),
+    k.scale(1),
+    k.opacity(1),
+    k.z(decoration.z ?? 2),
+  ]);
 }
 
 function addTownfolkNpc(k, x, y) {
@@ -993,7 +1008,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
         npcSpawnPos = k.vec2(x, y);
       } else if (DECORATION_BY_CHAR[cell]) {
         const decoration = DECORATION_BY_CHAR[cell];
-        addDecoration(k, decoration.sprite, x, y, decoration.z);
+        const decorationRef = addDecoration(k, decoration, x, y);
 
         if (cell === "s") {
           k.add([
@@ -1002,6 +1017,19 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
             k.area(),
             k.opacity(0),
             TAGS.dialogTrigger,
+          ]);
+        } else if (cell === "*") {
+          k.add([
+            k.pos(x, y - GAME_CONFIG.tile),
+            k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
+            k.area(),
+            k.opacity(0),
+            TAGS.checkpoint,
+            {
+              checkpointId: `level3-flag-${col}-${row}`,
+              respawnPos: k.vec2(x, y - GAME_CONFIG.tile),
+              flagRef: decorationRef,
+            },
           ]);
         }
       }

@@ -113,7 +113,7 @@ const LEVEL_TWO_ASCII = [
   "          E                          r    RRRRRRRRR                                                                                GGGG",
   "      #######                        r    RRRRRRRRR                                              HHHHHHH                           GGGG",
   "                              ####   r    RRRRRRRRR                                              HHHHHHH                           GGGG",
-  "                       ~~            )    RRRRRRRRR             =======                          HHHHHHH                           GGGG",
+  "                       ~~            )    RRRRRRRRR             =======           *              HHHHHHH                           GGGG",
   "                 ==                 ################            =======                          HHHHHHH                         ######                                      ",
   "         #######                    ####                         =======          =======         =======                                                                     ",
   "                                    RRRR                         =======          =======     E    =======                 ======",
@@ -154,6 +154,7 @@ const DECORATION_BY_CHAR = Object.freeze({
   D: { sprite: "door_2", scale: 2 },
   f: { sprite: "flag_1", scale: 2 },
   n: { sprite: "flag_2", scale: 2 },
+  "*": { sprite: "flag", scale: 2, anim: "wave" },
   b: { sprite: "button_green", scale: 2 },
   l: { sprite: "lever_1", scale: 2 },
   "(": { sprite: "rope_vertical_start", scale: ROPE_TILE_SCALE },
@@ -591,11 +592,15 @@ function addWaterTile(k, x, y, hasWaterAbove, isStartOfRun) {
   ]);
 }
 
-function addDecoration(k, spriteName, x, y, scale = 2) {
+function addDecoration(k, decoration, x, y) {
   return k.add([
     k.pos(x, y),
-    k.sprite(getEnvironmentTileSprite(spriteName)),
-    k.scale(scale),
+    k.sprite(
+      getEnvironmentTileSprite(decoration.sprite),
+      decoration.anim ? { anim: decoration.anim } : undefined,
+    ),
+    k.scale(decoration.scale ?? 2),
+    k.opacity(1),
     k.z(2),
   ]);
 }
@@ -1364,7 +1369,7 @@ export function buildLevelTwoAndria(k, options = {}) {
         npcSpawnPos = k.vec2(x, y);
       } else if (cell === "s") {
         const decoration = DECORATION_BY_CHAR[cell];
-        addDecoration(k, decoration.sprite, x, y, decoration.scale);
+        addDecoration(k, decoration, x, y);
         k.add([
           k.pos(x, y - GAME_CONFIG.tile),
           k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
@@ -1374,7 +1379,22 @@ export function buildLevelTwoAndria(k, options = {}) {
         ]);
       } else if (DECORATION_BY_CHAR[cell]) {
         const decoration = DECORATION_BY_CHAR[cell];
-        addDecoration(k, decoration.sprite, x, y, decoration.scale);
+        const decorationRef = addDecoration(k, decoration, x, y);
+
+        if (cell === "*") {
+          k.add([
+            k.pos(x, y - GAME_CONFIG.tile),
+            k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
+            k.area(),
+            k.opacity(0),
+            TAGS.checkpoint,
+            {
+              checkpointId: `level2-flag-${col}-${row}`,
+              respawnPos: k.vec2(x, y - GAME_CONFIG.tile),
+              flagRef: decorationRef,
+            },
+          ]);
+        }
       }
     }
   }

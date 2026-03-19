@@ -80,5 +80,4 @@ Original links:
 
 ## Notes
 
-- Game assets from different sources may have different attribution requirements.
-- Before publishing builds, verify that all third-party license obligations are respected.
+- This game was made as a gift for a special person.
