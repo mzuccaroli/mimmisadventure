@@ -774,6 +774,19 @@ function addPatrolEnemy(
       return;
     }
 
+    if (enemy._resumeDirection) {
+      direction = enemy._resumeDirection;
+      enemy._resumeDirection = 0;
+    }
+
+    if ((enemy._stunnedUntil ?? 0) > k.time()) {
+      const knockbackDir = enemy._knockbackDir ?? direction;
+      enemy.flipX = knockbackDir < 0;
+      enemy.vel.x = 0;
+
+      return;
+    }
+
     turnCooldown = Math.max(0, turnCooldown - k.dt());
     if (jumpSettings) {
       jumpTimer -= k.dt();
@@ -868,6 +881,18 @@ function addFlyingEnemy(
       return;
     }
 
+    if (enemy._resumeDirection) {
+      direction = enemy._resumeDirection;
+      enemy._resumeDirection = 0;
+    }
+
+    if ((enemy._stunnedUntil ?? 0) > k.time()) {
+      const knockbackDir = enemy._knockbackDir ?? direction;
+      enemy.flipX = knockbackDir < 0;
+
+      return;
+    }
+
     const bobOffset =
       bobAmplitude > 0 && bobSpeed > 0
         ? Math.sin(k.time() * bobSpeed) * bobAmplitude
@@ -933,6 +958,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
+  const enemySpawns = [];
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -968,6 +994,47 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     const wallAhead =
       wallCell === "#" || isHouseAtWorld(wallX, wallY) || isTreeTerrainCell(wallCell);
     return noGroundAhead || wallAhead;
+  }
+
+  function spawnEnemy(spawn) {
+    if (spawn.isFlying) {
+      return addFlyingEnemy(
+        k,
+        spawn.x,
+        spawn.y,
+        spawn.patrolWidth,
+        spawn.speed,
+        spawn.enemyName,
+        spawn.animationSpeed,
+        isDialogOpen,
+        spawn.patrolAxis,
+        spawn.bobAmplitude,
+        spawn.bobSpeed,
+      );
+    }
+
+    return addPatrolEnemy(
+      k,
+      spawn.x,
+      spawn.y,
+      spawn.patrolWidth,
+      spawn.speed,
+      spawn.enemyName,
+      spawn.animationSpeed,
+      shouldEnemyTurn,
+      isDialogOpen,
+      spawn.randomJump,
+    );
+  }
+
+  function resetEnemies() {
+    for (const enemy of k.get("enemy")) {
+      enemy.destroy();
+    }
+
+    for (const spawn of enemySpawns) {
+      spawnEnemy(spawn);
+    }
   }
 
   for (let row = 0; row < rows; row++) {
@@ -1063,32 +1130,33 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
       const x = col * GAME_CONFIG.tile;
       const y = mapOffsetY + row * GAME_CONFIG.tile;
       if (enemyConfig.isFlying) {
-        addFlyingEnemy(
-          k,
+        const spawn = {
           x,
           y,
-          enemyConfig.patrolWidth,
-          enemyConfig.speed,
-          enemyConfig.enemyName,
-          enemyConfig.animationSpeed,
-          isDialogOpen,
-          enemyConfig.patrolAxis,
-          enemyConfig.bobAmplitude,
-          enemyConfig.bobSpeed,
-        );
+          patrolWidth: enemyConfig.patrolWidth,
+          speed: enemyConfig.speed,
+          enemyName: enemyConfig.enemyName,
+          animationSpeed: enemyConfig.animationSpeed,
+          isFlying: true,
+          patrolAxis: enemyConfig.patrolAxis,
+          bobAmplitude: enemyConfig.bobAmplitude,
+          bobSpeed: enemyConfig.bobSpeed,
+        };
+        enemySpawns.push(spawn);
+        spawnEnemy(spawn);
       } else {
-        addPatrolEnemy(
-          k,
+        const spawn = {
           x,
-          y - GAME_CONFIG.tile * 2,
-          enemyConfig.patrolWidth,
-          enemyConfig.speed,
-          enemyConfig.enemyName,
-          enemyConfig.animationSpeed,
-          shouldEnemyTurn,
-          isDialogOpen,
-          enemyConfig.randomJump,
-        );
+          y: y - GAME_CONFIG.tile * 2,
+          patrolWidth: enemyConfig.patrolWidth,
+          speed: enemyConfig.speed,
+          enemyName: enemyConfig.enemyName,
+          animationSpeed: enemyConfig.animationSpeed,
+          randomJump: enemyConfig.randomJump,
+          isFlying: false,
+        };
+        enemySpawns.push(spawn);
+        spawnEnemy(spawn);
       }
     }
   }
@@ -1102,5 +1170,6 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
   return {
     levelWidth,
     playerStart,
+    resetEnemies,
   };
 }

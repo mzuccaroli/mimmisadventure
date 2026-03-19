@@ -341,6 +341,17 @@ function addPatrolEnemy(
       return;
     }
 
+    if (enemy._resumeDirection) {
+      direction = enemy._resumeDirection;
+      enemy._resumeDirection = 0;
+    }
+
+    if ((enemy._stunnedUntil ?? 0) > k.time()) {
+      enemy.vel.x = 0;
+      enemy.flipX = direction < 0;
+      return;
+    }
+
     turnCooldown = Math.max(0, turnCooldown - k.dt());
     const bbox = enemy.worldArea().bbox();
 
@@ -399,6 +410,7 @@ export function buildLevelOne(k, options = {}) {
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
+  const enemySpawns = [];
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -423,6 +435,31 @@ export function buildLevelOne(k, options = {}) {
     const noGroundAhead = !hasGroundAtWorld(footX, footY);
     const wallAhead = wallCell === "#";
     return noGroundAhead || wallAhead;
+  }
+
+  function spawnEnemy(spawn) {
+    return addPatrolEnemy(
+      k,
+      spawn.x,
+      spawn.y,
+      spawn.patrolWidth,
+      spawn.speed,
+      spawn.enemyName,
+      spawn.animationSpeed,
+      shouldEnemyTurn,
+      spawn.ignoreHazards,
+      isDialogOpen,
+    );
+  }
+
+  function resetEnemies() {
+    for (const enemy of k.get("enemy")) {
+      enemy.destroy();
+    }
+
+    for (const spawn of enemySpawns) {
+      spawnEnemy(spawn);
+    }
   }
 
   // First pass: terrain, spikes, clouds, spawn/goal markers and static decorations.
@@ -505,31 +542,29 @@ export function buildLevelOne(k, options = {}) {
       const y = mapOffsetY + row * GAME_CONFIG.tile;
 
       if (cell === "E") {
-        addPatrolEnemy(
-          k,
+        const spawn = {
           x,
-          y - GAME_CONFIG.tile * 2,
-          GAME_CONFIG.tile * 9,
-          95,
-          "alien_1",
-          8,
-          shouldEnemyTurn,
-          false,
-          isDialogOpen,
-        );
+          y: y - GAME_CONFIG.tile * 2,
+          patrolWidth: GAME_CONFIG.tile * 9,
+          speed: 95,
+          enemyName: "alien_1",
+          animationSpeed: 8,
+          ignoreHazards: false,
+        };
+        enemySpawns.push(spawn);
+        spawnEnemy(spawn);
       } else if (cell === "X") {
-        addPatrolEnemy(
-          k,
+        const spawn = {
           x,
-          y - GAME_CONFIG.tile * 2,
-          GAME_CONFIG.tile * 8,
-          80,
-          "spike",
-          8,
-          shouldEnemyTurn,
-          true,
-          isDialogOpen,
-        );
+          y: y - GAME_CONFIG.tile * 2,
+          patrolWidth: GAME_CONFIG.tile * 8,
+          speed: 80,
+          enemyName: "spike",
+          animationSpeed: 8,
+          ignoreHazards: true,
+        };
+        enemySpawns.push(spawn);
+        spawnEnemy(spawn);
       }
     }
   }
@@ -543,5 +578,6 @@ export function buildLevelOne(k, options = {}) {
   return {
     levelWidth,
     playerStart,
+    resetEnemies,
   };
 }

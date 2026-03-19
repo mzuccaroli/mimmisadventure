@@ -756,6 +756,19 @@ function addPatrolEnemy(
       return;
     }
 
+    if (enemy._resumeDirection) {
+      direction = enemy._resumeDirection;
+      enemy._resumeDirection = 0;
+    }
+
+    if ((enemy._stunnedUntil ?? 0) > k.time()) {
+      const knockbackDir = enemy._knockbackDir ?? direction;
+      enemy.flipX = knockbackDir < 0;
+      enemy.vel.x = 0;
+
+      return;
+    }
+
     turnCooldown = Math.max(0, turnCooldown - k.dt());
     if (jumpSettings) {
       jumpTimer -= k.dt();
@@ -827,6 +840,7 @@ export function buildLevelTwoAndria(k, options = {}) {
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
+  const enemySpawns = [];
 
   function getPipeTileCenter(row, col) {
     return k.vec2(
@@ -1312,6 +1326,32 @@ export function buildLevelTwoAndria(k, options = {}) {
     return noGroundAhead || wallAhead;
   }
 
+  function spawnEnemy(spawn) {
+    return addPatrolEnemy(
+      k,
+      spawn.x,
+      spawn.y,
+      spawn.patrolWidth,
+      spawn.speed,
+      spawn.enemyName,
+      spawn.animationSpeed,
+      shouldEnemyTurn,
+      spawn.ignoreHazards,
+      isDialogOpen,
+      spawn.randomJump,
+    );
+  }
+
+  function resetEnemies() {
+    for (const enemy of k.get("enemy")) {
+      enemy.destroy();
+    }
+
+    for (const spawn of enemySpawns) {
+      spawnEnemy(spawn);
+    }
+  }
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const cell = mapLines[row][col];
@@ -1424,19 +1464,18 @@ export function buildLevelTwoAndria(k, options = {}) {
 
       const enemyConfig = ENEMY_BY_CHAR[cell];
       if (enemyConfig) {
-        addPatrolEnemy(
-          k,
+        const spawn = {
           x,
-          y - GAME_CONFIG.tile * 2,
-          enemyConfig.patrolWidth,
-          enemyConfig.speed,
-          enemyConfig.enemyName,
-          enemyConfig.animationSpeed,
-          shouldEnemyTurn,
-          enemyConfig.ignoreHazards,
-          isDialogOpen,
-          enemyConfig.randomJump,
-        );
+          y: y - GAME_CONFIG.tile * 2,
+          patrolWidth: enemyConfig.patrolWidth,
+          speed: enemyConfig.speed,
+          enemyName: enemyConfig.enemyName,
+          animationSpeed: enemyConfig.animationSpeed,
+          ignoreHazards: enemyConfig.ignoreHazards,
+          randomJump: enemyConfig.randomJump,
+        };
+        enemySpawns.push(spawn);
+        spawnEnemy(spawn);
       }
     }
   }
@@ -1468,6 +1507,7 @@ export function buildLevelTwoAndria(k, options = {}) {
   return {
     levelWidth,
     playerStart,
+    resetEnemies,
     setupPipeTraversal,
     setupRopeTraversal,
   };

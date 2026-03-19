@@ -1,7 +1,7 @@
 import { HEART_CAPACITY, getHeartSpriteByLives } from "./serviceTiles.js";
 
 export function setupLivesSystem(k, player, options) {
-  const { maxLives, damageCooldown, respawnPos } = options;
+  const { maxLives, damageCooldown, respawnPos, onRespawn } = options;
   const heartScale = 2;
   const heartSpacing = 52;
   const rightMargin = 24;
@@ -133,6 +133,9 @@ export function setupLivesSystem(k, player, options) {
         player.frame = sideFrame;
         player.pos = k.vec2(currentRespawnPos.x, currentRespawnPos.y);
         player.vel = k.vec2(0, 0);
+        if (typeof onRespawn === "function") {
+          onRespawn();
+        }
         respawning = false;
 
         k.wait(cooldownRemainder, () => {

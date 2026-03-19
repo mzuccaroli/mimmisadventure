@@ -45,6 +45,25 @@ export const TILE_FRAMES = {
   cloudRight: 156,
 };
 
+function loadFemalePlayerSprite(k, spriteName, path) {
+  k.loadSprite(spriteName, path, {
+    sliceX: 4,
+    sliceY: 3,
+    anims: {
+      walkRight: {
+        frames: [1, 5, 9],
+        loop: true,
+        speed: 10,
+      },
+      walkLeft: {
+        frames: [3, 7, 11],
+        loop: true,
+        speed: 10,
+      },
+    },
+  });
+}
+
 export function loadTileAssets(k) {
   k.loadRoot("./");
 
@@ -66,22 +85,34 @@ export function loadTileAssets(k) {
     },
   );
 
-  k.loadSprite("femalePlayer", "sprites/Characters/Females/F_01_redhair.png", {
-    sliceX: 4,
-    sliceY: 3,
-    anims: {
-      walkRight: {
-        frames: [1, 5, 9],
-        loop: true,
-        speed: 10,
-      },
-      walkLeft: {
-        frames: [3, 7, 11],
-        loop: true,
-        speed: 10,
-      },
-    },
-  });
+  k.loadSprite("meleeCelery", "sprites/food/celery.png");
+  k.loadSprite("rangedOlivesGreen", "sprites/food/olives_green.png");
+
+  loadFemalePlayerSprite(
+    k,
+    "femalePlayer",
+    "sprites/Characters/Females/F_01_redhair.png",
+  );
+  loadFemalePlayerSprite(
+    k,
+    "femalePlayerBrown",
+    "sprites/Characters/Females/F_01.png",
+  );
+  loadFemalePlayerSprite(
+    k,
+    "femalePlayerBlack",
+    "sprites/Characters/Females/F_01_blackhair.png",
+  );
+  loadFemalePlayerSprite(
+    k,
+    "femalePlayerBlonde",
+    "sprites/Characters/Females/F_01_blondehair.png",
+  );
+  loadFemalePlayerSprite(
+    k,
+    "femalePlayerRed",
+    "sprites/Characters/Females/F_01_redhair.png",
+  );
 
   k.loadSprite(
     "npcTownfolkOldM001",

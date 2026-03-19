@@ -1,11 +1,19 @@
-export function createPlayer(k, playerStart, jumpForce) {
+export function createPlayer(
+  k,
+  playerStart,
+  jumpForce,
+  spriteName = "femalePlayerRed",
+) {
   return k.add([
     k.pos(playerStart),
-    k.sprite("femalePlayer", { anim: "walkRight" }),
+    k.sprite(spriteName, { anim: "walkRight" }),
     k.scale(2),
     k.area(),
     k.opacity(1),
     k.body({ jumpForce }),
+    {
+      facingLeft: false,
+    },
   ]);
 }
 
@@ -23,11 +31,15 @@ export function setupPlayerMovement(k, player, options) {
     isPipeTraveling = () => false,
     isRopeHanging = () => false,
     isDebugFlying = () => false,
+    canDoubleJump = false,
+    jumpWithSpace = true,
   } = options;
   let facingLeft = false;
   let wasDebugFlying = false;
+  let jumpsUsed = 0;
+  let wasGrounded = false;
 
-  function jumpIfGrounded() {
+  function canUseMovementControls() {
     if (
       isGameOver() ||
       isRespawning() ||
@@ -35,72 +47,69 @@ export function setupPlayerMovement(k, player, options) {
       isPipeTraveling() ||
       isRopeHanging()
     ) {
+      return false;
+    }
+    return true;
+  }
+
+  function jumpIfPossible() {
+    if (!canUseMovementControls()) {
       return;
     }
+
     if (player.isGrounded()) {
       player.jump();
+      jumpsUsed = 1;
+      return;
+    }
+
+    if (canDoubleJump && jumpsUsed < 2) {
+      player.jump();
+      jumpsUsed += 1;
     }
   }
 
   k.onKeyDown("left", () => {
-    if (
-      isGameOver() ||
-      isRespawning() ||
-      isDialogOpen() ||
-      isPipeTraveling() ||
-      isRopeHanging()
-    ) {
+    if (!canUseMovementControls()) {
       return;
     }
     facingLeft = true;
+    player.facingLeft = true;
     player.move(-playerSpeed, 0);
   });
 
   k.onKeyDown("a", () => {
-    if (
-      isGameOver() ||
-      isRespawning() ||
-      isDialogOpen() ||
-      isPipeTraveling() ||
-      isRopeHanging()
-    ) {
+    if (!canUseMovementControls()) {
       return;
     }
     facingLeft = true;
+    player.facingLeft = true;
     player.move(-playerSpeed, 0);
   });
 
   k.onKeyDown("right", () => {
-    if (
-      isGameOver() ||
-      isRespawning() ||
-      isDialogOpen() ||
-      isPipeTraveling() ||
-      isRopeHanging()
-    ) {
+    if (!canUseMovementControls()) {
       return;
     }
     facingLeft = false;
+    player.facingLeft = false;
     player.move(playerSpeed, 0);
   });
 
   k.onKeyDown("d", () => {
-    if (
-      isGameOver() ||
-      isRespawning() ||
-      isDialogOpen() ||
-      isPipeTraveling() ||
-      isRopeHanging()
-    ) {
+    if (!canUseMovementControls()) {
       return;
     }
     facingLeft = false;
+    player.facingLeft = false;
     player.move(playerSpeed, 0);
   });
 
-  k.onKeyPress("space", jumpIfGrounded);
-  k.onKeyPress("w", jumpIfGrounded);
-  k.onKeyPress("up", jumpIfGrounded);
+  if (jumpWithSpace) {
+    k.onKeyPress("space", jumpIfPossible);
+  }
+  k.onKeyPress("w", jumpIfPossible);
+  k.onKeyPress("up", jumpIfPossible);
 
   player.onUpdate(() => {
     if (isGameOver()) return;
@@ -108,6 +117,12 @@ export function setupPlayerMovement(k, player, options) {
     const playerCenterX = player.pos.x + player.width / 2;
     const playerCenterY = player.pos.y + player.height / 2;
     const debugFlying = isDebugFlying();
+    const grounded = player.isGrounded();
+
+    if (grounded && !wasGrounded) {
+      jumpsUsed = 0;
+    }
+    wasGrounded = grounded;
 
     if (debugFlying) {
       if (!wasDebugFlying) {
@@ -129,6 +144,7 @@ export function setupPlayerMovement(k, player, options) {
         player.pos = player.pos.add(step);
       }
 
+      player.facingLeft = moveX < 0;
       player.frame = moveX < 0 ? 7 : 5;
       player.flipX = false;
     } else if (wasDebugFlying) {
