@@ -300,6 +300,7 @@ function addPatrolEnemy(
     k.z(4),
     TAGS.hazard,
     "enemy",
+    { isEnemyActor: true },
   ]);
 
   const minX = x - patrolWidth;

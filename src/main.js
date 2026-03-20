@@ -69,6 +69,12 @@ const PLAYER_CHOICES = Object.freeze([
     sprite: "femalePlayerRed",
     ability: "ranged",
   },
+  {
+    id: "magic",
+    label: "Magic-haired Mimmi",
+    sprite: "femalePlayerMagic",
+    ability: "base",
+  },
 ]);
 
 function getHelpTextForCharacter(character) {
@@ -161,20 +167,26 @@ function createSelectionScreen(onSelect) {
     k.z(102),
   ]);
 
-  const optionWidth = 220;
-  const optionHeight = 170;
-  const columnGap = 34;
-  const rowGap = 28;
+  const optionWidth = 190;
+  const optionHeight = 160;
+  const columnGap = 24;
+  const rowGap = 24;
+  const itemsPerRow = 3;
+  const totalRows = Math.ceil(PLAYER_CHOICES.length / itemsPerRow);
   const centerX = k.width() / 2;
-  const centerY = k.height() / 2 + 10;
-  const xOffset = optionWidth / 2 + columnGap / 2;
-  const yOffset = optionHeight / 2 + rowGap / 2;
+  const centerY = k.height() / 2 + 18;
+  const totalGridHeight = totalRows * optionHeight + (totalRows - 1) * rowGap;
+  const firstRowY = centerY - totalGridHeight / 2 + optionHeight / 2;
 
   PLAYER_CHOICES.forEach((choice, index) => {
-    const isLeftColumn = index % 2 === 0;
-    const isTopRow = index < 2;
-    const x = centerX + (isLeftColumn ? -xOffset : xOffset);
-    const y = centerY + (isTopRow ? -yOffset : yOffset);
+    const rowIndex = Math.floor(index / itemsPerRow);
+    const columnIndex = index % itemsPerRow;
+    const rowStart = rowIndex * itemsPerRow;
+    const rowCount = Math.min(itemsPerRow, PLAYER_CHOICES.length - rowStart);
+    const totalRowWidth = rowCount * optionWidth + (rowCount - 1) * columnGap;
+    const firstRowX = centerX - totalRowWidth / 2 + optionWidth / 2;
+    const x = firstRowX + columnIndex * (optionWidth + columnGap);
+    const y = firstRowY + rowIndex * (optionHeight + rowGap);
 
     addUi([
       k.pos(x, y),
@@ -323,6 +335,10 @@ function startGame(selectedCharacter) {
     if (ropeTraversal.isRopeHanging()) return false;
     if (lives.isRespawning()) return false;
     return true;
+  }
+
+  function isMagicCharacter() {
+    return selectedCharacter.id === "magic";
   }
 
   function showHelpLabel(text) {
@@ -590,7 +606,7 @@ function startGame(selectedCharacter) {
   let meleeCooldown = 0;
   let rangedCooldown = 0;
   const MELEE_STUN_DURATION = 0.3;
-  const RANGED_STUN_DURATION = 0.5;
+  const RANGED_STUN_DURATION = 0.8;
 
   function applyMeleeHit(enemy, direction) {
     if (!enemy || enemy._defeated) return;
@@ -617,7 +633,7 @@ function startGame(selectedCharacter) {
         ? enemy.worldArea().bbox()
         : { width: GAME_CONFIG.tile, height: GAME_CONFIG.tile };
     const knockbackDir = enemyCenter.x >= playerCenter.x ? 1 : -1;
-    const knockbackDistance = Math.max(enemyBbox.width * 2, GAME_CONFIG.tile * 2);
+    const knockbackDistance = Math.max(enemyBbox.width * 3.5, GAME_CONFIG.tile * 3.5);
 
     enemy._meleeHitCooldownUntil = now + MELEE_STUN_DURATION;
     enemy._stunnedUntil = now + MELEE_STUN_DURATION;
@@ -667,6 +683,105 @@ function startGame(selectedCharacter) {
       [170, 222, 255],
       0.14,
     );
+  }
+
+  function transformEnemyIntoFairy(enemy) {
+    if (!enemy || enemy._defeated || enemy._transformedToFairy) return;
+
+    enemy._defeated = true;
+    enemy._transformedToFairy = true;
+
+    const center =
+      typeof enemy.worldArea === "function"
+        ? (() => {
+            const bbox = enemy.worldArea().bbox();
+            return k.vec2(bbox.pos.x + bbox.width / 2, bbox.pos.y + bbox.height / 2);
+          })()
+        : k.vec2(enemy.pos.x, enemy.pos.y);
+
+    enemy.destroy();
+
+    const fairy = k.add([
+      k.pos(center.x, center.y),
+      k.anchor("center"),
+      k.sprite("magicFairy"),
+      k.scale(1.4),
+      k.opacity(0.96),
+      k.z(5),
+      "magicFairy",
+    ]);
+    const fairyMarginX = GAME_CONFIG.tile * 1.4;
+    const fairyMarginTop = GAME_CONFIG.tile * 1.1;
+    const fairyVisibleBandHeight = GAME_CONFIG.tile * 4.5;
+    let targetPos = k.vec2(center.x, center.y - GAME_CONFIG.tile * 2);
+    let fairySpeed = 88;
+    const flutterSeed = Math.random() * Math.PI * 2;
+
+    function getVisibleFairyBounds() {
+      const playerCenterX = player.pos.x + player.width / 2;
+      const playerCenterY = player.pos.y + player.height / 2;
+      const camHalfW = k.width() / (2 * GAME_CONFIG.cameraZoom);
+      const camHalfH = k.height() / (2 * GAME_CONFIG.cameraZoom);
+      const camMinX = camHalfW;
+      const camMaxX = Math.max(camHalfW, level.levelWidth - camHalfW);
+      const camX = k.clamp(playerCenterX, camMinX, camMaxX);
+      const camMinY = camHalfH;
+      const camMaxY = k.height() - camHalfH - 1;
+      const baseCamY = k.height() / 2 + GAME_CONFIG.cameraYOffset;
+      const targetCamY =
+        pipeTraversal.isPipeTraveling() || ropeTraversal.isRopeHanging() || isDebugFlying()
+          ? playerCenterY
+          : Math.min(baseCamY, playerCenterY + GAME_CONFIG.cameraYOffset);
+      const camY = k.clamp(targetCamY, camMinY, camMaxY);
+
+      return {
+        minX: camX - camHalfW + fairyMarginX,
+        maxX: camX + camHalfW - fairyMarginX,
+        minY: camY - camHalfH + fairyMarginTop,
+        maxY:
+          camY - camHalfH + fairyMarginTop + fairyVisibleBandHeight,
+      };
+    }
+
+    function pickFairyTarget(initial = false) {
+      const bounds = getVisibleFairyBounds();
+      const minX = bounds.minX;
+      const maxX = Math.max(bounds.minX, bounds.maxX);
+      const minY = bounds.minY;
+      const maxY = Math.max(bounds.minY, bounds.maxY);
+      const nextX = initial
+        ? k.clamp(center.x + (Math.random() * 2 - 1) * GAME_CONFIG.tile * 4, minX, maxX)
+        : k.rand(minX, maxX);
+      const nextY = initial
+        ? k.clamp(center.y - GAME_CONFIG.tile * 2, minY, maxY)
+        : k.rand(minY, maxY);
+
+      targetPos = k.vec2(nextX, nextY);
+      fairySpeed = initial ? 26 : k.rand(54, 92);
+    }
+
+    pickFairyTarget(true);
+
+    fairy.onUpdate(() => {
+      const bounds = getVisibleFairyBounds();
+      const toTarget = targetPos.sub(fairy.pos);
+      const distance = toTarget.len();
+
+      if (distance <= 4) {
+        pickFairyTarget(false);
+      } else {
+        const step = Math.min(distance, fairySpeed * k.dt());
+        fairy.pos = fairy.pos.add(toTarget.unit().scale(step));
+      }
+
+      fairy.pos.x = k.clamp(fairy.pos.x, bounds.minX, Math.max(bounds.minX, bounds.maxX));
+      fairy.pos.y = k.clamp(fairy.pos.y, bounds.minY, Math.max(bounds.minY, bounds.maxY));
+
+      const elapsed = k.time();
+      fairy.angle = Math.sin(elapsed * 8 + flutterSeed) * 10;
+      const flutterScale = 1.32 + (Math.sin(elapsed * 10 + flutterSeed) + 1) * 0.05;
+      fairy.scale = k.vec2(flutterScale, flutterScale);
+    });
   }
 
   function doMeleeAttack() {
@@ -889,10 +1004,23 @@ function startGame(selectedCharacter) {
     playCheckpointActivation(checkpoint);
   });
 
-  player.onCollide(TAGS.hazard, () => {
+  player.onCollide("enemy", (enemy) => {
+    if (!isMagicCharacter()) return;
+    if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+    if (isDebugFlying()) return;
+    if (pipeTraversal.isPipeTraveling()) return;
+    if (ropeTraversal.isRopeHanging()) return;
+    if (!enemy?.isEnemyActor) return;
+
+    lives.damagePlayer({ respawn: false });
+    transformEnemyIntoFairy(enemy);
+  });
+
+  player.onCollide(TAGS.hazard, (hazard) => {
     if (dialogOpen || goalSequenceActive) return;
     if (isDebugFlying()) return;
     if (pipeTraversal.isPipeTraveling()) return;
+    if (isMagicCharacter() && hazard?.isEnemyActor) return;
     lives.damagePlayer();
   });
 }

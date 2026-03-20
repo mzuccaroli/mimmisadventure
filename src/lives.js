@@ -86,7 +86,8 @@ export function setupLivesSystem(k, player, options) {
     });
   }
 
-  function damagePlayer() {
+  function damagePlayer(options = {}) {
+    const { respawn = true } = options;
     if (gameOver || !canTakeDamage) return;
 
     lives -= 1;
@@ -98,6 +99,26 @@ export function setupLivesSystem(k, player, options) {
     }
 
     canTakeDamage = false;
+
+    if (!respawn) {
+      const blinkStartTime = k.time();
+      const blinkDuration = Math.max(0.2, damageCooldown * 0.55);
+      const blinkCtrl = player.onUpdate(() => {
+        const elapsed = k.time() - blinkStartTime;
+        player.opacity = 0.45 + Math.sin(elapsed * 30) * 0.2;
+
+        if (elapsed >= blinkDuration) {
+          blinkCtrl.cancel();
+          player.opacity = 1;
+        }
+      });
+
+      k.wait(damageCooldown, () => {
+        canTakeDamage = true;
+      });
+      return;
+    }
+
     respawning = true;
 
     const transitionDuration = Math.min(0.22, damageCooldown * 0.35);

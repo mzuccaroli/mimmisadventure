@@ -87,6 +87,7 @@ export function loadTileAssets(k) {
 
   k.loadSprite("meleeCelery", "sprites/food/celery.png");
   k.loadSprite("rangedOlivesGreen", "sprites/food/olives_green.png");
+  k.loadSprite("magicFairy", "tiny-creatures/processed/tile_0013_fairy.png");
 
   loadFemalePlayerSprite(
     k,
@@ -112,6 +113,11 @@ export function loadTileAssets(k) {
     k,
     "femalePlayerRed",
     "sprites/Characters/Females/F_01_redhair.png",
+  );
+  loadFemalePlayerSprite(
+    k,
+    "femalePlayerMagic",
+    "sprites/Characters/Females/F_01_rainbowhair.png",
   );
 
   k.loadSprite(
