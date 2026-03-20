@@ -104,6 +104,75 @@ const HOUSE_TILE_SPRITE_BY_CHAR = Object.freeze({
   3: "tiny_house_gray_door_closed_right",
   4: "tiny_house_gray_door_closed_left",
 });
+const BACKGROUND_HILL_SPECS = Object.freeze([
+  [0, 7, 8, 5, 0.3],
+  [16, 8, 7, 4, 0.24],
+  [32, 6, 9, 6, 0.28],
+  [46, 7, 7, 5, 0.26],
+  [64, 8, 10, 4, 0.22],
+  [78, 7, 9, 5, 0.28],
+  [102, 8, 8, 4, 0.22],
+  [132, 8, 8, 4, 0.26],
+  [164, 7, 10, 5, 0.28],
+  [188, 8, 9, 4, 0.22],
+  [206, 8, 8, 4, 0.24],
+  [248, 7, 11, 5, 0.28],
+  [270, 8, 8, 4, 0.2],
+  [292, 8, 9, 4, 0.26],
+  [316, 7, 8, 5, 0.22],
+  [334, 7, 10, 5, 0.28],
+  [356, 8, 8, 4, 0.22],
+]);
+const BACKGROUND_HOUSE_SPECS = Object.freeze([
+  { col: 10, size: "6x5", opacity: 0.32 },
+  { col: 34, size: "7x4", opacity: 0.28 },
+  { col: 66, size: "6x5", opacity: 0.3 },
+  { col: 94, size: "7x4", opacity: 0.26 },
+  { col: 142, size: "6x5", opacity: 0.32 },
+  { col: 194, size: "7x4", opacity: 0.28 },
+  { col: 234, size: "6x5", opacity: 0.3 },
+  { col: 284, size: "7x4", opacity: 0.26 },
+  { col: 328, size: "6x5", opacity: 0.3 },
+]);
+const FOREGROUND_DECOR_SPECS = Object.freeze([
+  { col: 11, tiles: [["decor_floor_left"]] },
+  { col: 15, tiles: [["decor_floor_right"]] },
+  { col: 22, tiles: [["decor_column_top"]] },
+  { col: 28, tiles: [["decor_column_upper"]] },
+  { col: 35, tiles: [["decor_console_left"]] },
+  { col: 41, tiles: [["decor_console_right"]] },
+  { col: 48, tiles: [["decor_machine_left"]] },
+  { col: 54, tiles: [["decor_machine_right"]] },
+  { col: 66, tiles: [["decor_column_middle"]] },
+  { col: 73, tiles: [["decor_column_lower"]] },
+  { col: 82, tiles: [["decor_column_bottom"]] },
+  { col: 96, tiles: [["decor_floor_left"]] },
+  { col: 102, tiles: [["decor_floor_right"]] },
+  { col: 116, tiles: [["decor_console_left"]] },
+  { col: 124, tiles: [["decor_console_right"]] },
+  { col: 138, tiles: [["decor_machine_left"]] },
+  { col: 147, tiles: [["decor_machine_right"]] },
+  { col: 161, tiles: [["decor_column_top"]] },
+  { col: 168, tiles: [["decor_column_middle"]] },
+  { col: 178, tiles: [["decor_column_bottom"]] },
+  { col: 192, tiles: [["decor_floor_left"]] },
+  { col: 198, tiles: [["decor_floor_right"]] },
+  { col: 214, tiles: [["decor_column_upper"]] },
+  { col: 223, tiles: [["decor_console_left"]] },
+  { col: 231, tiles: [["decor_console_right"]] },
+  { col: 246, tiles: [["decor_machine_left"]] },
+  { col: 254, tiles: [["decor_machine_right"]] },
+  { col: 268, tiles: [["decor_column_lower"]] },
+  { col: 279, tiles: [["decor_column_top"]] },
+  { col: 291, tiles: [["decor_floor_left"]] },
+  { col: 298, tiles: [["decor_floor_right"]] },
+  { col: 312, tiles: [["decor_console_left"]] },
+  { col: 320, tiles: [["decor_console_right"]] },
+  { col: 334, tiles: [["decor_machine_left"]] },
+  { col: 343, tiles: [["decor_machine_right"]] },
+  { col: 356, tiles: [["decor_column_middle"]] },
+  { col: 364, tiles: [["decor_column_bottom"]] },
+]);
 
 const LEVEL_FOUR_ASCII = [
   "            ====          ----                                          j------k                                                    ----                     ====                                                                       ----                ====                                         ------------------------------------------------------------------------------------ ",
@@ -463,9 +532,14 @@ function addBackdropTerrainPatch(
   widthInTiles,
   heightInTiles,
   opacity = 0.35,
+  shouldSkipCell = null,
 ) {
   for (let row = 0; row < heightInTiles; row++) {
     for (let col = 0; col < widthInTiles; col++) {
+      const worldRow = rowStart + row;
+      const worldCol = colStart + col;
+      if (shouldSkipCell?.(worldRow, worldCol)) continue;
+
       const x = (colStart + col) * GAME_CONFIG.tile;
       const y = mapOffsetY + (rowStart + row) * GAME_CONFIG.tile;
       const hasTerrainLeft = col > 0;
@@ -516,6 +590,86 @@ function addBackdropTerrainPatch(
   }
 }
 
+function buildBackgroundHousePlacements() {
+  const placements = [];
+  const occupiedCells = new Set();
+
+  for (const spec of BACKGROUND_HOUSE_SPECS) {
+    const template = HOUSES_GRAY_GREY_ROOF_BY_SIZE[spec.size];
+    if (!template) {
+      throw new Error(`House background size "${spec.size}" non definita.`);
+    }
+
+    const width = template[0].length;
+    const height = template.length;
+    const compatibleHills = BACKGROUND_HILL_SPECS.filter(
+      ([, , hillWidth]) => hillWidth >= width,
+    )
+      .map(([hillCol, hillRow, hillWidth]) => {
+        const snappedCol = kClamp(spec.col, hillCol, hillCol + hillWidth - width);
+        return {
+          hillCol,
+          hillRow,
+          hillWidth,
+          col: snappedCol,
+          row: hillRow - height,
+          distance: Math.abs(snappedCol - spec.col),
+        };
+      })
+      .sort((a, b) => a.distance - b.distance || a.hillCol - b.hillCol);
+
+    let placement = null;
+
+    for (const candidate of compatibleHills) {
+      let overlaps = false;
+      for (let localRow = 0; localRow < height && !overlaps; localRow++) {
+        for (let localCol = 0; localCol < width; localCol++) {
+          const key = buildCellKey(
+            candidate.row + localRow,
+            candidate.col + localCol,
+          );
+          if (occupiedCells.has(key)) {
+            overlaps = true;
+            break;
+          }
+        }
+      }
+
+      if (!overlaps) {
+        placement = {
+          ...spec,
+          col: candidate.col,
+          row: candidate.row,
+          width,
+          height,
+          template,
+        };
+        break;
+      }
+    }
+
+    if (!placement) {
+      throw new Error(
+        `Nessuna collina di sfondo disponibile per la casa ${spec.size} a colonna ${spec.col}.`,
+      );
+    }
+
+    for (let localRow = 0; localRow < height; localRow++) {
+      for (let localCol = 0; localCol < width; localCol++) {
+        occupiedCells.add(buildCellKey(placement.row + localRow, placement.col + localCol));
+      }
+    }
+
+    placements.push(placement);
+  }
+
+  return { placements, occupiedCells };
+}
+
+function kClamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function addBackdropToxicPatch(
   k,
   mapOffsetY,
@@ -533,6 +687,28 @@ function addBackdropToxicPatch(
       const hasLeft = col > 0;
       const hasRight = col < widthInTiles - 1;
       addToxicTile(k, x, y, hasAbove, hasLeft, hasRight, -13, opacity);
+    }
+  }
+}
+
+function addBackdropHouse(k, mapOffsetY, placement) {
+  const { col: colStart, row: rowStart, template, opacity = 0.3 } = placement;
+  for (let row = 0; row < template.length; row++) {
+    for (let col = 0; col < template[row].length; col++) {
+      const cell = template[row][col];
+      const spriteName = HOUSE_TILE_SPRITE_BY_CHAR[cell];
+      if (!spriteName) continue;
+
+      k.add([
+        k.pos(
+          (colStart + col) * GAME_CONFIG.tile,
+          mapOffsetY + (rowStart + row) * GAME_CONFIG.tile,
+        ),
+        k.sprite(getEnvironmentTileSprite(spriteName)),
+        k.scale(TINY_TOWN_TILE_SCALE),
+        k.opacity(opacity),
+        k.z(-12),
+      ]);
     }
   }
 }
@@ -1158,18 +1334,25 @@ export function buildLevelFourLombardia(k, options = {}) {
   const floorY = k.height() - GAME_CONFIG.floorHeight;
   const floorStartRow = rows - 3;
   const mapOffsetY = floorY - floorStartRow * GAME_CONFIG.tile;
+  const backgroundHouseLayer = buildBackgroundHousePlacements();
 
   addIndustrialSky(k, levelWidth);
-  addBackdropTerrainPatch(k, mapOffsetY, 0, 7, 8, 5, 0.3);
-  addBackdropTerrainPatch(k, mapOffsetY, 22, 6, 8, 6, 0.28);
-  addBackdropTerrainPatch(k, mapOffsetY, 46, 7, 7, 5, 0.26);
-  addBackdropTerrainPatch(k, mapOffsetY, 78, 7, 9, 5, 0.28);
-  addBackdropTerrainPatch(k, mapOffsetY, 132, 8, 8, 4, 0.26);
-  addBackdropTerrainPatch(k, mapOffsetY, 164, 7, 10, 5, 0.28);
-  addBackdropTerrainPatch(k, mapOffsetY, 206, 8, 8, 4, 0.24);
-  addBackdropTerrainPatch(k, mapOffsetY, 248, 7, 11, 5, 0.28);
-  addBackdropTerrainPatch(k, mapOffsetY, 292, 8, 9, 4, 0.26);
-  addBackdropTerrainPatch(k, mapOffsetY, 334, 7, 10, 5, 0.28);
+  BACKGROUND_HILL_SPECS.forEach(([col, row, width, height, opacity]) => {
+    addBackdropTerrainPatch(
+      k,
+      mapOffsetY,
+      col,
+      row,
+      width,
+      height,
+      opacity,
+      (cellRow, cellCol) =>
+        backgroundHouseLayer.occupiedCells.has(buildCellKey(cellRow, cellCol)),
+    );
+  });
+  backgroundHouseLayer.placements.forEach((placement) => {
+    addBackdropHouse(k, mapOffsetY, placement);
+  });
   addBackdropToxicPatch(k, mapOffsetY, 11, 8, 5, 4, 0.22);
   addBackdropToxicPatch(k, mapOffsetY, 58, 9, 7, 3, 0.2);
   addBackdropToxicPatch(k, mapOffsetY, 152, 9, 7, 3, 0.18);
@@ -1198,6 +1381,111 @@ export function buildLevelFourLombardia(k, options = {}) {
   function hasGroundAtWorld(worldX, worldY) {
     const cell = cellAtWorld(worldX, worldY);
     return isSolidAsciiCell(cell) || cell === "=" || isHouseAtWorld(worldX, worldY);
+  }
+
+  const foregroundDecorCells = new Set();
+
+  function isForegroundDecorAreaClear(rowTop, colStart, width, height) {
+    if (rowTop < 0 || colStart < 0 || rowTop + height > rows || colStart + width > cols) {
+      return false;
+    }
+
+    for (let row = rowTop; row < rowTop + height; row++) {
+      for (let col = colStart; col < colStart + width; col++) {
+        if (foregroundDecorCells.has(buildCellKey(row, col))) {
+          return false;
+        }
+
+        if (isHouseCell(row, col)) {
+          return false;
+        }
+
+        const cell = mapCharAt(mapLines, row, col);
+        if (cell !== " ") {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  function hasForegroundDecorSupport(supportRow, colStart, width) {
+    if (supportRow < 0 || supportRow >= rows) {
+      return false;
+    }
+
+    for (let col = colStart; col < colStart + width; col++) {
+      const worldX = col * GAME_CONFIG.tile + GAME_CONFIG.tile * 0.5;
+      const worldY =
+        mapOffsetY + supportRow * GAME_CONFIG.tile + GAME_CONFIG.tile * 0.75;
+      if (!hasGroundAtWorld(worldX, worldY)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function findForegroundDecorPlacement(spec) {
+    const width = spec.tiles[0].length;
+    const height = spec.tiles.length;
+    const candidateCols = [];
+
+    for (let offset = 0; offset <= 8; offset++) {
+      candidateCols.push(spec.col + offset);
+      if (offset > 0) {
+        candidateCols.push(spec.col - offset);
+      }
+    }
+
+    for (const candidateCol of candidateCols) {
+      if (candidateCol < 0 || candidateCol + width > cols) {
+        continue;
+      }
+
+      for (let supportRow = 0; supportRow < rows; supportRow++) {
+        const rowTop = supportRow - height;
+        if (rowTop < 0) {
+          continue;
+        }
+
+        if (
+          hasForegroundDecorSupport(supportRow, candidateCol, width) &&
+          isForegroundDecorAreaClear(rowTop, candidateCol, width, height)
+        ) {
+          return { row: rowTop, col: candidateCol };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function addForegroundDecor(spec, z = 2.2) {
+    const placement = findForegroundDecorPlacement(spec);
+    if (!placement) {
+      return;
+    }
+
+    spec.tiles.forEach((tileRow, rowOffset) => {
+      tileRow.forEach((spriteName, colOffset) => {
+        if (!spriteName) {
+          return;
+        }
+
+        const row = placement.row + rowOffset;
+        const col = placement.col + colOffset;
+        foregroundDecorCells.add(buildCellKey(row, col));
+        addDecoration(
+          k,
+          spriteName,
+          col * GAME_CONFIG.tile,
+          mapOffsetY + row * GAME_CONFIG.tile,
+          z,
+        );
+      });
+    });
   }
 
   function shouldEnemyTurn(enemy, direction, bbox) {
@@ -1356,6 +1644,10 @@ export function buildLevelFourLombardia(k, options = {}) {
       TAGS.hazard,
     ]);
   }
+
+  FOREGROUND_DECOR_SPECS.forEach((spec) => {
+    addForegroundDecor(spec);
+  });
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
