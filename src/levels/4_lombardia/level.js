@@ -1,10 +1,17 @@
 import { GAME_CONFIG, TAGS } from "../../tiles.js";
 import { getEnemySpriteFrames } from "../../enemyTiles.js";
+import { getEnvironmentTileSprite } from "../../environmentTiles.js";
 import { getEnvironmentTileIndustrialSprite } from "../../environmentTiles_industrial.js";
+import {
+  HOUSES_GRAY_GREY_ROOF_BY_SIZE,
+  applyHouses,
+  findHousePlacements,
+} from "../shared/houses.js";
 
 const TERRAIN_TAG = "terrain";
 const NPC_VISUAL_HEIGHT = 23;
 const NPC_SCALE = 2;
+const TINY_TOWN_TILE_SCALE = GAME_CONFIG.tile / 16;
 const TERRAIN_NO_SUPPORT_TILES = {
   single: "concrete_soil_single",
   left: "concrete_soil_single_left",
@@ -76,20 +83,45 @@ const PIPE_SOLID_CHARS = new Set(["|", "-", "j", "k", "u", "n", "p", "q"]);
 const WATER_CHARS = new Set(["!", "v", "w"]);
 const HANGING_DECOR_CHARS = new Set(["r", "t", "f", "c", "h", "g"]);
 const AQUATIC_ENEMY_CHARS = new Set(["X"]);
+const HOUSE_PLACEHOLDER_CONFIG = Object.freeze({
+  G: HOUSES_GRAY_GREY_ROOF_BY_SIZE,
+});
+const HOUSE_TILE_SPRITE_BY_CHAR = Object.freeze({
+  A: "tiny_roof_top_grey_left",
+  B: "tiny_roof_top_grey_center",
+  C: "tiny_roof_top_grey_right",
+  F: "tiny_roof_top_grey_chimney",
+  K: "tiny_roof_bottom_grey_left",
+  L: "tiny_roof_bottom_grey_center",
+  M: "tiny_roof_bottom_grey_right",
+  N: "tiny_roof_bottom_grey_dormer",
+  Z: "tiny_house_gray_wall_left",
+  0: "tiny_house_gray_wall_center",
+  1: "tiny_house_gray_door_open",
+  2: "tiny_house_gray_wall_right",
+  k: "tiny_house_gray_window",
+  x: "tiny_house_gray_door_closed",
+  3: "tiny_house_gray_door_closed_right",
+  4: "tiny_house_gray_door_closed_left",
+});
 
 const LEVEL_FOUR_ASCII = [
-  "                                                                                                                                 ",
-  "                        ====        j------k                    =====                               ====                          ",
-  "           L                        |            B   ====     C                ====                                             ",
-  "           L     ====               p            B    r  c    C                                           ====                  ",
-  "  P        L                        v!           B    f  g    C                     E                                           ",
-  "      ==== L      ##!!##    E       !!      ==== B   j----k   C         #  ###                               ====              ",
-  "     ######L      ##!!##  ######    !!    ######  c   |       C      ####!X#r                  b   m   R      d               ",
-  "        ###L       ====   ######    !!       ==== g----n      C      ####!!#f               ####====####   T      S          ",
-  "###########L############################   ##############################!!###############################################      ",
-  "###########L############################   ##########################  ##!!###############################################      ",
-  "###########L############################   ##########################  ##!!###############################################      ",
-  "###########L############################   ##########################  ##!!###############################################      ",
+  "            ====          ----                                          j------k                                                    ----                     ====                                                                       ----                ====                                         ------------------------------------------------------------------------------------ ",
+  "                                                          ====          |                                              ----                 ====                        j------k",
+  "-------                                   j------k                                                                                                                      |                   --------------------------------",
+  "                                          |                                               j----------------K                                       j------k                                                                                   ",
+  "                                          |                                               |                                                        |",
+  "                                    j-----n                                                                                                     ====       j-------k                  =====                                                 ------                                            ====                   =====                     ",
+  "           L                        |                     ====C====            ========                                              GGGGGG                |               B                                                                 ====        ====                                              B      ====                                        ==C====",
+  "           L                        p                     c   C                                                                      GGGGGG                p               B      c                                   ----          ====                                       ----        r   c           B                       GGGGGGG   j------k           C                                   ",
+  "  P        L                       Bv!B                   g   C                     E                                                GGGGGG                v!         E    B      g                                                            E                                           f   g     E     B         ====          GGGGGGG   |                  C                    E              ",
+  "      ==== L       B!!B     E      B!!B              j----k   C        ##  ###                                                       GGGGGG   ##!!##       !!            ====   j----k                          ######                                              ====                ######         ====B    j---k              GGGGGGG   p          ####    C    ##!!##                        ",
+  "     ######L       B!!B   ######   B!!B    #####     |        C        ##!X#r                  b   m   R      d                      GGGGGG   ##!!##   b   !!         ######    |            !X            m     ####                R                                     b      m     ####            ####    | |      R         GGGGGGG   v!         ####!X# C    ##!!##       d",
+  "        ###L       ====   ######   B!!B    ----------n        C        ##!!#f               ####    ####   T                      ####################     !!         ====  ----n       ####!!!       ####====####                    T                             ####====####     ####!!##        ====          ####====###############!!!!!!!!!!!!!!####!!# C    ##!!##        T     S    ",
+  "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
+  "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
+  "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
+  "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
 ];
 
 function isWaterAsciiCell(cell) {
@@ -105,6 +137,24 @@ function mapCharAt(mapLines, row, col) {
   if (row < 0 || row >= mapLines.length) return " ";
   if (col < 0 || col >= mapLines[row].length) return " ";
   return mapLines[row][col];
+}
+
+function buildCellKey(row, col) {
+  return `${row}:${col}`;
+}
+
+function buildHouseCellSet(housePlacements) {
+  const cells = new Set();
+
+  for (const placement of housePlacements) {
+    for (let row = 0; row < placement.height; row++) {
+      for (let col = 0; col < placement.width; col++) {
+        cells.add(buildCellKey(placement.row + row, placement.col + col));
+      }
+    }
+  }
+
+  return cells;
 }
 
 function isShaftCell(cell) {
@@ -125,13 +175,13 @@ function buildColliderRects(mapLines, matcher) {
     let col = 0;
 
     while (col < line.length) {
-      if (!matcher(line[col])) {
+      if (!matcher(line[col], row, col)) {
         col += 1;
         continue;
       }
 
       const start = col;
-      while (col + 1 < line.length && matcher(line[col + 1])) {
+      while (col + 1 < line.length && matcher(line[col + 1], row, col + 1)) {
         col += 1;
       }
       runs.push({ x0: start, x1: col });
@@ -310,6 +360,15 @@ function getHorizontalPipeSpriteName(mapLines, row, col) {
     : "horizontal_pipe_center_right";
 }
 
+function getPipeConnections(mapLines, row, col) {
+  return {
+    left: ["-", "j", "u"].includes(mapCharAt(mapLines, row, col - 1)),
+    right: ["-", "k", "n"].includes(mapCharAt(mapLines, row, col + 1)),
+    up: ["|", "j", "k"].includes(mapCharAt(mapLines, row - 1, col)),
+    down: ["|", "u", "n", "p", "q"].includes(mapCharAt(mapLines, row + 1, col)),
+  };
+}
+
 function addAsciiStructureCell(k, mapLines, row, col, x, y) {
   const cell = mapCharAt(mapLines, row, col);
   let spriteName = null;
@@ -323,13 +382,41 @@ function addAsciiStructureCell(k, mapLines, row, col, x, y) {
   } else if (cell === "-") {
     spriteName = getHorizontalPipeSpriteName(mapLines, row, col);
   } else if (cell === "j") {
-    spriteName = "pipe_elbow_down_right";
+    const { right, down, left, up } = getPipeConnections(mapLines, row, col);
+    if (right && down) {
+      spriteName = "pipe_elbow_down_right";
+    } else if (left || right) {
+      spriteName = getHorizontalPipeSpriteName(mapLines, row, col);
+    } else if (up || down) {
+      spriteName = getVerticalPipeSpriteName(mapLines, row, col);
+    }
   } else if (cell === "k") {
-    spriteName = "pipe_elbow_down_left";
+    const { left, down, right, up } = getPipeConnections(mapLines, row, col);
+    if (left && down) {
+      spriteName = "pipe_elbow_down_left";
+    } else if (left || right) {
+      spriteName = getHorizontalPipeSpriteName(mapLines, row, col);
+    } else if (up || down) {
+      spriteName = getVerticalPipeSpriteName(mapLines, row, col);
+    }
   } else if (cell === "u") {
-    spriteName = "pipe_elbow_up_right";
+    const { right, up, left, down } = getPipeConnections(mapLines, row, col);
+    if (right && up) {
+      spriteName = "pipe_elbow_up_right";
+    } else if (left || right) {
+      spriteName = getHorizontalPipeSpriteName(mapLines, row, col);
+    } else if (up || down) {
+      spriteName = getVerticalPipeSpriteName(mapLines, row, col);
+    }
   } else if (cell === "n") {
-    spriteName = "pipe_elbow_up_left";
+    const { left, up, right, down } = getPipeConnections(mapLines, row, col);
+    if (left && up) {
+      spriteName = "pipe_elbow_up_left";
+    } else if (left || right) {
+      spriteName = getHorizontalPipeSpriteName(mapLines, row, col);
+    } else if (up || down) {
+      spriteName = getVerticalPipeSpriteName(mapLines, row, col);
+    }
   } else if (cell === "p") {
     spriteName = "vertical_pipe_pour_left";
   } else if (cell === "q") {
@@ -1024,6 +1111,7 @@ function addWaterJumpEnemy(
     if (state === "wait") {
       enemy.pos.y = hiddenY;
       enemy.opacity = 0;
+      enemy.angle = 0;
       if (k.time() >= stateUntil) {
         state = "rise";
       }
@@ -1033,6 +1121,7 @@ function addWaterJumpEnemy(
     if (state === "rise") {
       enemy.pos.y = Math.max(peakY, enemy.pos.y - riseSpeed * k.dt());
       enemy.opacity = enemy.pos.y < waterSurfaceY ? 1 : 0;
+      enemy.angle = 0;
       if (enemy.pos.y <= peakY + 0.5) {
         state = "fall";
       }
@@ -1041,9 +1130,11 @@ function addWaterJumpEnemy(
 
     enemy.pos.y = Math.min(hiddenY, enemy.pos.y + fallSpeed * k.dt());
     enemy.opacity = enemy.pos.y < waterSurfaceY ? 1 : 0;
+    enemy.angle = 180;
     if (enemy.pos.y >= hiddenY - 0.5) {
       enemy.pos.y = hiddenY;
       enemy.opacity = 0;
+      enemy.angle = 0;
       state = "wait";
       stateUntil = k.time() + k.rand(0.55, 1.1);
     }
@@ -1054,7 +1145,13 @@ function addWaterJumpEnemy(
 
 export function buildLevelFourLombardia(k, options = {}) {
   const { isDialogOpen = () => false } = options;
-  const mapLines = normalizeAsciiMap(LEVEL_FOUR_ASCII);
+  const baseMapLines = normalizeAsciiMap(LEVEL_FOUR_ASCII);
+  const housePlacements = findHousePlacements(
+    baseMapLines,
+    HOUSE_PLACEHOLDER_CONFIG,
+  );
+  const houseCells = buildHouseCellSet(housePlacements);
+  const mapLines = applyHouses(baseMapLines, HOUSE_PLACEHOLDER_CONFIG);
   const rows = mapLines.length;
   const cols = mapLines[0].length;
   const levelWidth = cols * GAME_CONFIG.tile;
@@ -1067,8 +1164,16 @@ export function buildLevelFourLombardia(k, options = {}) {
   addBackdropTerrainPatch(k, mapOffsetY, 22, 6, 8, 6, 0.28);
   addBackdropTerrainPatch(k, mapOffsetY, 46, 7, 7, 5, 0.26);
   addBackdropTerrainPatch(k, mapOffsetY, 78, 7, 9, 5, 0.28);
+  addBackdropTerrainPatch(k, mapOffsetY, 132, 8, 8, 4, 0.26);
+  addBackdropTerrainPatch(k, mapOffsetY, 164, 7, 10, 5, 0.28);
+  addBackdropTerrainPatch(k, mapOffsetY, 206, 8, 8, 4, 0.24);
+  addBackdropTerrainPatch(k, mapOffsetY, 248, 7, 11, 5, 0.28);
+  addBackdropTerrainPatch(k, mapOffsetY, 292, 8, 9, 4, 0.26);
+  addBackdropTerrainPatch(k, mapOffsetY, 334, 7, 10, 5, 0.28);
   addBackdropToxicPatch(k, mapOffsetY, 11, 8, 5, 4, 0.22);
   addBackdropToxicPatch(k, mapOffsetY, 58, 9, 7, 3, 0.2);
+  addBackdropToxicPatch(k, mapOffsetY, 152, 9, 7, 3, 0.18);
+  addBackdropToxicPatch(k, mapOffsetY, 273, 9, 8, 3, 0.18);
 
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
@@ -1080,9 +1185,19 @@ export function buildLevelFourLombardia(k, options = {}) {
     return mapCharAt(mapLines, row, col);
   }
 
+  function isHouseCell(row, col) {
+    return houseCells.has(buildCellKey(row, col));
+  }
+
+  function isHouseAtWorld(worldX, worldY) {
+    const col = Math.floor(worldX / GAME_CONFIG.tile);
+    const row = Math.floor((worldY - mapOffsetY) / GAME_CONFIG.tile);
+    return isHouseCell(row, col);
+  }
+
   function hasGroundAtWorld(worldX, worldY) {
     const cell = cellAtWorld(worldX, worldY);
-    return isSolidAsciiCell(cell) || cell === "=";
+    return isSolidAsciiCell(cell) || cell === "=" || isHouseAtWorld(worldX, worldY);
   }
 
   function shouldEnemyTurn(enemy, direction, bbox) {
@@ -1094,7 +1209,7 @@ export function buildLevelFourLombardia(k, options = {}) {
     const wallX = direction > 0 ? bbox.pos.x + bbox.width + 2 : bbox.pos.x - 2;
     const wallCell = cellAtWorld(wallX, wallY);
     const noGroundAhead = !hasGroundAtWorld(footX, footY);
-    const wallAhead = isSolidAsciiCell(wallCell);
+    const wallAhead = isSolidAsciiCell(wallCell) || isHouseAtWorld(wallX, wallY);
     return noGroundAhead || wallAhead;
   }
 
@@ -1140,7 +1255,19 @@ export function buildLevelFourLombardia(k, options = {}) {
       const x = col * GAME_CONFIG.tile;
       const y = mapOffsetY + row * GAME_CONFIG.tile;
 
-      if (cell === "#") {
+      if (isHouseCell(row, col)) {
+        const spriteName = HOUSE_TILE_SPRITE_BY_CHAR[cell];
+        if (!spriteName) {
+          throw new Error(`House tile "${cell}" non definita nel livello 4.`);
+        }
+
+        k.add([
+          k.pos(x, y),
+          k.sprite(getEnvironmentTileSprite(spriteName)),
+          k.scale(TINY_TOWN_TILE_SCALE),
+          k.z(0.5),
+        ]);
+      } else if (cell === "#") {
         const isTop = mapCharAt(mapLines, row - 1, col) !== "#";
         const hasTerrainBelow = mapCharAt(mapLines, row + 1, col) === "#";
         const hasTerrainLeft = mapCharAt(mapLines, row, col - 1) === "#";
@@ -1195,8 +1322,8 @@ export function buildLevelFourLombardia(k, options = {}) {
     }
   }
 
-  const terrainColliderRects = buildColliderRects(mapLines, (cell) =>
-    isSolidAsciiCell(cell),
+  const terrainColliderRects = buildColliderRects(mapLines, (cell, row, col) =>
+    isSolidAsciiCell(cell) || isHouseCell(row, col),
   );
   for (const rect of terrainColliderRects) {
     const x = rect.x0 * GAME_CONFIG.tile;
