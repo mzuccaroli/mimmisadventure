@@ -1,6 +1,7 @@
 import kaplay from "kaplay";
 import { loadBackgroundTileAssets } from "./backgroundTiles.js";
 import { createDialogSystem } from "./dialogUI.js";
+import { loadEnvironmentTileIndustrialAssets } from "./environmentTiles_industrial.js";
 import { setupLivesSystem } from "./lives.js";
 import { loadEnvironmentTileFarmAssets } from "./environmentTiles_farm.js";
 import {
@@ -18,6 +19,11 @@ import {
   getLevelThreeMontegrossoSignDialogPages,
 } from "./levels/3_montegrosso/dialogs.js";
 import { buildLevelThreeMontegrosso } from "./levels/3_montegrosso/level.js";
+import {
+  getLevelFourLombardiaGoalDialogPages,
+  getLevelFourLombardiaSignDialogPages,
+} from "./levels/4_lombardia/dialogs.js";
+import { buildLevelFourLombardia } from "./levels/4_lombardia/level.js";
 import { createPlayer, setupPlayerMovement } from "./playerMovement.js";
 import { loadEnemyTileAssets } from "./enemyTiles.js";
 import { loadEnvironmentTileAssets } from "./environmentTiles.js";
@@ -39,6 +45,11 @@ const LEVEL_DEFINITIONS = Object.freeze({
     buildLevel: buildLevelThreeMontegrosso,
     getGoalDialogPages: getLevelThreeMontegrossoGoalDialogPages,
     getSignDialogPages: getLevelThreeMontegrossoSignDialogPages,
+  },
+  4: {
+    buildLevel: buildLevelFourLombardia,
+    getGoalDialogPages: getLevelFourLombardiaGoalDialogPages,
+    getSignDialogPages: getLevelFourLombardiaSignDialogPages,
   },
 });
 
@@ -119,6 +130,7 @@ loadTileAssets(k);
 loadBackgroundTileAssets(k);
 loadEnvironmentTileAssets(k);
 loadEnvironmentTileFarmAssets(k);
+loadEnvironmentTileIndustrialAssets(k);
 loadEnemyTileAssets(k);
 loadServiceTiles(k);
 k.setGravity(1800);
