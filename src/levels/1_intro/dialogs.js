@@ -11,10 +11,20 @@ const LEVEL_GOAL_DIALOG_PAGES = [
   "Vecchio saggio: ...\nMIMMI AIUTACI TU!",
 ];
 
+const LEVEL_LIBERATION_DIALOG_PAGES = [
+  "Vecchio saggio:\nGrazie Mimmi per avere liberato il villaggio!",
+  "Vecchio saggio: ...\nHai trasformato tutti i mostri in creature innocue.",
+  "Vecchio saggio: ...\nAdesso possiamo ripartire verso Andria in pace.",
+];
+
 export function getLevelOneSignDialogPages() {
   return [...SIGN_DIALOG_PAGES];
 }
 
 export function getLevelOneGoalDialogPages() {
   return [...LEVEL_GOAL_DIALOG_PAGES];
+}
+
+export function getLevelOneLiberationDialogPages() {
+  return [...LEVEL_LIBERATION_DIALOG_PAGES];
 }

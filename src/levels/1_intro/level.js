@@ -443,8 +443,23 @@ export function buildLevelOne(k, options = {}) {
     return noGroundAhead || wallAhead;
   }
 
+  function attachEnemyFallGuard(enemy, spawn) {
+    if (!enemy) return enemy;
+
+    const fallLimitY = mapOffsetY + rows * GAME_CONFIG.tile + GAME_CONFIG.tile * 2;
+    enemy.onUpdate(() => {
+      if (enemy.pos.y <= fallLimitY) return;
+      enemy.pos = k.vec2(spawn.x, spawn.y);
+      enemy.vel = k.vec2(0, 0);
+    });
+
+    return enemy;
+  }
+
   function spawnEnemy(spawn) {
-    return addPatrolEnemy(
+    if (spawn._transformedToFairy) return null;
+
+    const enemy = addPatrolEnemy(
       k,
       spawn.x,
       spawn.y,
@@ -456,6 +471,12 @@ export function buildLevelOne(k, options = {}) {
       spawn.ignoreHazards,
       isDialogOpen,
     );
+
+    if (enemy && spawn.tracksFairyRescue) {
+      enemy._spawnRef = spawn;
+    }
+
+    return attachEnemyFallGuard(enemy, spawn);
   }
 
   function resetEnemies() {
@@ -466,6 +487,20 @@ export function buildLevelOne(k, options = {}) {
     for (const spawn of enemySpawns) {
       spawnEnemy(spawn);
     }
+  }
+
+  function markEnemyAsTransformed(enemy) {
+    const spawn = enemy?._spawnRef;
+    if (!spawn?.tracksFairyRescue) return;
+    spawn._transformedToFairy = true;
+  }
+
+  function areAllEnemiesTransformed() {
+    const rescuableSpawns = enemySpawns.filter((spawn) => spawn.tracksFairyRescue);
+    return (
+      rescuableSpawns.length > 0 &&
+      rescuableSpawns.every((spawn) => spawn._transformedToFairy)
+    );
   }
 
   // First pass: terrain, spikes, clouds, spawn/goal markers and static decorations.
@@ -598,6 +633,7 @@ export function buildLevelOne(k, options = {}) {
           enemyName: "alien_1",
           animationSpeed: 8,
           ignoreHazards: false,
+          tracksFairyRescue: true,
         };
         enemySpawns.push(spawn);
         spawnEnemy(spawn);
@@ -610,6 +646,7 @@ export function buildLevelOne(k, options = {}) {
           enemyName: "spike",
           animationSpeed: 8,
           ignoreHazards: true,
+          tracksFairyRescue: false,
         };
         enemySpawns.push(spawn);
         spawnEnemy(spawn);
@@ -627,6 +664,8 @@ export function buildLevelOne(k, options = {}) {
     levelWidth,
     playerStart,
     resetEnemies,
+    markEnemyAsTransformed,
+    areAllEnemiesTransformed,
     unlockExitDoor() {
       if (!exitDoorBlocker) return;
       exitDoorBlocker.destroy();

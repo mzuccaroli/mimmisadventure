@@ -5,21 +5,25 @@ import { loadEnvironmentTileIndustrialAssets } from "./environmentTiles_industri
 import { setupLivesSystem } from "./lives.js";
 import { loadEnvironmentTileFarmAssets } from "./environmentTiles_farm.js";
 import {
+  getLevelOneLiberationDialogPages,
   getLevelOneGoalDialogPages,
   getLevelOneSignDialogPages,
 } from "./levels/1_intro/dialogs.js";
 import { buildLevelOne } from "./levels/1_intro/level.js";
 import {
+  getLevelTwoLiberationDialogPages,
   getLevelTwoGoalDialogPages,
   getLevelTwoSignDialogPages,
 } from "./levels/2_andria/dialogs.js";
 import { buildLevelTwoAndria } from "./levels/2_andria/level.js";
 import {
+  getLevelThreeMontegrossoLiberationDialogPages,
   getLevelThreeMontegrossoGoalDialogPages,
   getLevelThreeMontegrossoSignDialogPages,
 } from "./levels/3_montegrosso/dialogs.js";
 import { buildLevelThreeMontegrosso } from "./levels/3_montegrosso/level.js";
 import {
+  getLevelFourLombardiaLiberationDialogPages,
   getLevelFourLombardiaGoalDialogPages,
   getLevelFourLombardiaSignDialogPages,
 } from "./levels/4_lombardia/dialogs.js";
@@ -34,21 +38,25 @@ const LEVEL_DEFINITIONS = Object.freeze({
   1: {
     buildLevel: buildLevelOne,
     getGoalDialogPages: getLevelOneGoalDialogPages,
+    getLiberationDialogPages: getLevelOneLiberationDialogPages,
     getSignDialogPages: getLevelOneSignDialogPages,
   },
   2: {
     buildLevel: buildLevelTwoAndria,
     getGoalDialogPages: getLevelTwoGoalDialogPages,
+    getLiberationDialogPages: getLevelTwoLiberationDialogPages,
     getSignDialogPages: getLevelTwoSignDialogPages,
   },
   3: {
     buildLevel: buildLevelThreeMontegrosso,
     getGoalDialogPages: getLevelThreeMontegrossoGoalDialogPages,
+    getLiberationDialogPages: getLevelThreeMontegrossoLiberationDialogPages,
     getSignDialogPages: getLevelThreeMontegrossoSignDialogPages,
   },
   4: {
     buildLevel: buildLevelFourLombardia,
     getGoalDialogPages: getLevelFourLombardiaGoalDialogPages,
+    getLiberationDialogPages: getLevelFourLombardiaLiberationDialogPages,
     getSignDialogPages: getLevelFourLombardiaSignDialogPages,
   },
 });
@@ -58,6 +66,8 @@ const PLAYER_FRONT_FRAME = 4;
 const CHARACTER_UNLOCK_STORAGE_KEY = "mimmi_unlocked_characters";
 const PENDING_CHARACTER_STORAGE_KEY = "mimmi_pending_character_id";
 const LEVEL_SELECTOR_UNLOCK_STORAGE_KEY = "mimmi_level_selector_unlocked";
+const LIBERATED_LEVELS_STORAGE_KEY = "mimmi_liberated_levels";
+const COMPLETED_LEVELS_STORAGE_KEY = "mimmi_completed_levels";
 const NEXT_LEVEL_BY_LEVEL_ID = Object.freeze({
   1: "2",
   2: "3",
@@ -202,11 +212,104 @@ function unlockLevelSelector() {
   }
 }
 
+function getLiberatedLevelIds() {
+  try {
+    const stored = window.localStorage.getItem(LIBERATED_LEVELS_STORAGE_KEY);
+    if (!stored) {
+      return new Set();
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+
+    const validLevelIds = new Set(Object.keys(LEVEL_DEFINITIONS));
+    return new Set(parsed.filter((levelId) => validLevelIds.has(String(levelId))));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistLiberatedLevelIds(levelIds) {
+  try {
+    window.localStorage.setItem(
+      LIBERATED_LEVELS_STORAGE_KEY,
+      JSON.stringify([...levelIds]),
+    );
+  } catch {
+    // Ignore localStorage failures for liberated level persistence.
+  }
+}
+
+function markLevelAsLiberated(levelId) {
+  const liberatedLevelIds = getLiberatedLevelIds();
+  liberatedLevelIds.add(String(levelId));
+  persistLiberatedLevelIds(liberatedLevelIds);
+}
+
+function getCompletedLevelIds() {
+  try {
+    const stored = window.localStorage.getItem(COMPLETED_LEVELS_STORAGE_KEY);
+    if (!stored) {
+      const unlockedCharacterIds = getUnlockedCharacterIds();
+      const allCharacterIds = PLAYER_CHOICES.map((choice) => choice.id);
+      const hasFullLegacyProgress =
+        isLevelSelectorUnlocked() &&
+        allCharacterIds.every((characterId) => unlockedCharacterIds.has(characterId));
+
+      return hasFullLegacyProgress
+        ? new Set(Object.keys(LEVEL_DEFINITIONS))
+        : new Set();
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+
+    const validLevelIds = new Set(Object.keys(LEVEL_DEFINITIONS));
+    return new Set(
+      parsed
+        .map((levelId) => String(levelId))
+        .filter((levelId) => validLevelIds.has(levelId)),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function persistCompletedLevelIds(levelIds) {
+  try {
+    window.localStorage.setItem(
+      COMPLETED_LEVELS_STORAGE_KEY,
+      JSON.stringify([...levelIds]),
+    );
+  } catch {
+    // Ignore localStorage failures for completed level persistence.
+  }
+}
+
+function markLevelAsCompleted(levelId) {
+  const completedLevelIds = getCompletedLevelIds();
+  completedLevelIds.add(String(levelId));
+  persistCompletedLevelIds(completedLevelIds);
+}
+
+function areAllLevelsCompleted() {
+  const completedLevelIds = getCompletedLevelIds();
+  return Object.keys(LEVEL_DEFINITIONS).every((levelId) =>
+    completedLevelIds.has(levelId),
+  );
+}
+
 function resetGameProgressToNewGame() {
   try {
     window.localStorage.removeItem(CHARACTER_UNLOCK_STORAGE_KEY);
     window.localStorage.removeItem(LEVEL_SELECTOR_UNLOCK_STORAGE_KEY);
     window.localStorage.removeItem(PENDING_CHARACTER_STORAGE_KEY);
+    window.localStorage.removeItem(LIBERATED_LEVELS_STORAGE_KEY);
+    window.localStorage.removeItem(COMPLETED_LEVELS_STORAGE_KEY);
   } catch {
     // Ignore localStorage failures for new game reset.
   }
@@ -288,7 +391,15 @@ function createSelectionScreen(onSelect, options = {}) {
     unlockedCharacterIds.has(choice.id),
   );
   const levelSelectorVisible = isLevelSelectorUnlocked();
+  const liberatedLevelIds = getLiberatedLevelIds();
+  const allLevelIds = Object.keys(LEVEL_DEFINITIONS);
+  const selectableLevelIds = allLevelIds.filter(
+    (levelId) => !liberatedLevelIds.has(levelId),
+  );
   let selectedLevelId = forcedLevelId ?? getConfiguredLevelId();
+  if (levelSelectorVisible && liberatedLevelIds.has(selectedLevelId)) {
+    selectedLevelId = selectableLevelIds[0] ?? null;
+  }
   let handledSelection = false;
   const addUi = (components) => {
     const obj = k.add(components);
@@ -399,6 +510,7 @@ function createSelectionScreen(onSelect, options = {}) {
 
     option.onClick(() => {
       if (handledSelection) return;
+      if (levelSelectorVisible && !selectedLevelId) return;
       handledSelection = true;
       onSelect(choice, selectedLevelId);
     });
@@ -451,7 +563,13 @@ function createSelectionScreen(onSelect, options = {}) {
 
     const syncLevelButtonState = () => {
       levelButtons.forEach(({ levelId, frame, label }) => {
+        const liberated = liberatedLevelIds.has(levelId);
         const active = levelId === selectedLevelId;
+        if (liberated) {
+          frame.color = k.rgb(86, 150, 92);
+          label.color = k.rgb(234, 255, 236);
+          return;
+        }
         frame.color = active ? k.rgb(101, 78, 52) : k.rgb(176, 146, 112);
         label.color = active ? k.rgb(255, 247, 230) : k.rgb(78, 56, 34);
       });
@@ -484,6 +602,7 @@ function createSelectionScreen(onSelect, options = {}) {
       ]);
 
       frame.onClick(() => {
+        if (liberatedLevelIds.has(levelId)) return;
         selectedLevelId = levelId;
         syncLevelButtonState();
       });
@@ -502,6 +621,78 @@ function createSelectionScreen(onSelect, options = {}) {
 
     syncLevelButtonState();
   }
+
+  return () => {
+    ui.forEach((obj) => obj.destroy());
+  };
+}
+
+function createEndGameScreen() {
+  const ui = [];
+  const addUi = (components) => {
+    const obj = k.add(components);
+    ui.push(obj);
+    return obj;
+  };
+
+  addUi([
+    k.pos(0, 0),
+    k.rect(k.width(), k.height()),
+    k.color(19, 24, 22),
+    k.opacity(0.96),
+    k.fixed(),
+    k.z(200),
+  ]);
+
+  addUi([
+    k.pos(k.width() / 2, k.height() / 2 - 80),
+    k.anchor("center"),
+    k.text(
+      "Grazie per aver giocato,\ndedicato a una donna piena di superpoteri.\nCon tanto amore Marco",
+      {
+        size: 28,
+        width: Math.min(k.width() - 120, 760),
+        align: "center",
+        lineSpacing: 10,
+      },
+    ),
+    k.color(244, 238, 220),
+    k.fixed(),
+    k.z(201),
+  ]);
+
+  const buttonY = k.height() / 2 + 120;
+  const buttonFrame = addUi([
+    k.pos(k.width() / 2, buttonY),
+    k.anchor("center"),
+    k.rect(250, 54),
+    k.color(101, 78, 52),
+    k.area(),
+    k.fixed(),
+    k.z(201),
+  ]);
+
+  const buttonLabel = addUi([
+    k.pos(k.width() / 2, buttonY),
+    k.anchor("center"),
+    k.text("Start new game", { size: 22 }),
+    k.color(255, 247, 230),
+    k.fixed(),
+    k.z(202),
+  ]);
+
+  buttonFrame.onClick(() => {
+    resetGameProgressToNewGame();
+    window.location.reload();
+  });
+
+  const blinkStart = k.time();
+  const blinkCtrl = buttonFrame.onUpdate(() => {
+    const wave = (Math.sin((k.time() - blinkStart) * 6) + 1) * 0.5;
+    buttonFrame.opacity = 0.45 + wave * 0.55;
+    buttonLabel.opacity = 0.45 + wave * 0.55;
+  });
+  ui.push({ destroy: () => blinkCtrl.cancel() });
 
   return () => {
     ui.forEach((obj) => obj.destroy());
@@ -709,6 +900,10 @@ function startGame(selectedCharacter) {
     subtitle = "Click a character to start the level",
   } = {}) {
     if (levelExitSequenceActive) return;
+    if (areAllLevelsCompleted()) {
+      openEndGameScreen();
+      return;
+    }
     levelExitSequenceActive = true;
     dialogOpen = false;
     goalSequenceActive = true;
@@ -745,6 +940,18 @@ function startGame(selectedCharacter) {
       title: "Choose Your Mimmi",
       subtitle: "Select your character and level",
     });
+  }
+
+  function openEndGameScreen() {
+    if (levelExitSequenceActive) return;
+    levelExitSequenceActive = true;
+    dialogOpen = false;
+    goalSequenceActive = true;
+    player.stop();
+    player.vel = k.vec2(0, 0);
+    player.isStatic = true;
+    freezeEnemies();
+    createEndGameScreen();
   }
 
   function swapPlayerSprite(choice) {
@@ -841,6 +1048,28 @@ function startGame(selectedCharacter) {
     });
   }
 
+  function getGoalDialogPagesForCurrentState() {
+    const allEnemiesTransformed =
+      typeof level.areAllEnemiesTransformed === "function" &&
+      level.areAllEnemiesTransformed();
+
+    if (
+      allEnemiesTransformed &&
+      typeof currentLevelDefinition.getLiberationDialogPages === "function"
+    ) {
+      return currentLevelDefinition.getLiberationDialogPages();
+    }
+
+    return currentLevelDefinition.getGoalDialogPages();
+  }
+
+  function isCurrentLevelLiberated() {
+    return (
+      typeof level.areAllEnemiesTransformed === "function" &&
+      level.areAllEnemiesTransformed()
+    );
+  }
+
   function playGoalCelebrationThenDialog() {
     if (dialogOpen || goalSequenceActive || isDebugFlying()) return;
 
@@ -880,7 +1109,7 @@ function startGame(selectedCharacter) {
         celebrationCtrl.cancel();
         player.vel = k.vec2(0, 0);
         player.frame = 5;
-        openDialogWithLock(currentLevelDefinition.getGoalDialogPages(), {
+        openDialogWithLock(getGoalDialogPagesForCurrentState(), {
           onClose: () => {
             playUnlockTransformation(pendingUnlockedCharacter, () => {
               pendingUnlockedCharacter = null;
@@ -1108,6 +1337,10 @@ function startGame(selectedCharacter) {
 
   function transformEnemyIntoFairy(enemy) {
     if (!enemy || enemy._defeated || enemy._transformedToFairy) return;
+
+    if (typeof level.markEnemyAsTransformed === "function") {
+      level.markEnemyAsTransformed(enemy);
+    }
 
     enemy._defeated = true;
     enemy._transformedToFairy = true;
@@ -1365,6 +1598,16 @@ function startGame(selectedCharacter) {
       }
     });
 
+    k.onKeyPress("k", () => {
+      if (!k.isKeyDown("ctrl") && !k.isKeyDown("control")) return;
+      if (lives.isGameOver()) return;
+      if (!isDebugFlying()) return;
+
+      for (const enemy of [...k.get("enemy")]) {
+        transformEnemyIntoFairy(enemy);
+      }
+    });
+
     Object.keys(LEVEL_DEFINITIONS).forEach((levelId) => {
       k.onKeyPress(levelId, () => {
         setConfiguredLevelId(levelId);
@@ -1415,6 +1658,10 @@ function startGame(selectedCharacter) {
     if (ropeTraversal.isRopeHanging()) return;
     if (reachedGoal) return;
     reachedGoal = true;
+    markLevelAsCompleted(currentLevelId);
+    if (isCurrentLevelLiberated()) {
+      markLevelAsLiberated(currentLevelId);
+    }
     pendingUnlockedCharacter = getCharacterRewardChoiceForLevel(currentLevelId);
     unlockCharacterForLevel(currentLevelId);
     playGoalCelebrationThenDialog();
@@ -1434,6 +1681,10 @@ function startGame(selectedCharacter) {
     }
 
     if (currentLevelId === "4") {
+      if (areAllLevelsCompleted()) {
+        openEndGameScreen();
+        return;
+      }
       openLevelSelectionHub();
     }
   });
@@ -1482,6 +1733,8 @@ const pendingCharacterChoice = getPlayerChoiceById(consumePendingCharacterId());
 
 if (pendingCharacterChoice) {
   startGame(pendingCharacterChoice);
+} else if (areAllLevelsCompleted()) {
+  createEndGameScreen();
 } else {
   destroySelectionScreen = createSelectionScreen((choice, levelId) => {
     destroySelectionScreen();

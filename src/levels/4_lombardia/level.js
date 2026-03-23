@@ -189,7 +189,7 @@ const FOREGROUND_DECOR_SPECS = Object.freeze([
 const LEVEL_FOUR_ASCII = [
   "                                                                           9                                                                                                                                                                                                                               9                         9              9                   9                         ",
   "            ====          ----                                          j------k                                                    ----                     ====                                                                       ----                ====                                         ------------------------------------------------------------------------------------ ",
-  "   9                                                      ====          |                                              ----                 ====                        j------k                    R",
+  "                                                          ====          |                                              ----                 ====                        j------k                    R",
   "-------                                   j------k                                                m                                                  d                  |                   --------------------------------",
   "                                          |                                               j----------------K                                       j------k                                                                                   ",
   "                                          |                                               |                                                        |                                    R ",
@@ -199,7 +199,7 @@ const LEVEL_FOUR_ASCII = [
   "  P  s     L                       Bv!B                   g   C                     E                                                GGGGGG                v!         E    B      g                                                                                                        f   g     E     B         ====          GGGGGGG   |                  C                                  ",
   "      ==== L       B!!B     E      B!!B              j----k   C        ##  ###                        *                              GGGGGG   ##!!##       !!            ====   j----k                          ######                                              ====                ######         ====B    j---k              GGGGGGG   p          ####    C    ##!!##                        ",
   "     ######L       B!!B   ######   B!!B    #####     |        C        ##!X#r                  b                                     GGGGGG   ##!!##   b   !!         ######    |            !X            m     ####                R              *                      b      m     ####            ####    | |      R         GGGGGGG   v!         ####!X# C    ##!!##       d       S       ",
-  "        ###L       ====   ######   B!!B    ----------n        C        ##!!#f               ####    ####   T                      ####################     !!         ====  ----n       ####!!!       ####====####                    T                             ####====####     ####!!##        ====          ####====###############!!!!!!!!!!!!!!####!!# C    ##!!##        T          ",
+  "     ######L       ====   ######   B!!B    ----------n        C        ##!!#f               ####    ####   T                      ####################     !!         ====  ----n       ####!!!       ####====####                    T                             ####====####     ####!!##        ====          ####====###############!!!!!!!!!!!!!!####!!# C    ##!!##        T          ",
   "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################!!!!!!##########################################!!!!############################################!!!!#####################################",
   "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################!!!!!!##########################################!!!!############################################!!!!#####################################",
   "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################!!!!!!##########################################!!!!############################################!!!!#####################################",
@@ -1558,9 +1558,24 @@ export function buildLevelFourLombardia(k, options = {}) {
     return noGroundAhead || wallAhead;
   }
 
+  function attachEnemyFallGuard(enemy, spawn) {
+    if (!enemy) return enemy;
+
+    const fallLimitY = mapOffsetY + rows * GAME_CONFIG.tile + GAME_CONFIG.tile * 2;
+    enemy.onUpdate(() => {
+      if (enemy.pos.y <= fallLimitY) return;
+      enemy.pos = k.vec2(spawn.x, spawn.y);
+      enemy.vel = k.vec2(0, 0);
+    });
+
+    return enemy;
+  }
+
   function spawnEnemy(spawn) {
+    if (spawn._transformedToFairy) return null;
+
     if (spawn.enemyName === "scrissors") {
-      return addWaterJumpEnemy(
+      const enemy = addWaterJumpEnemy(
         k,
         spawn.x,
         spawn.y,
@@ -1568,9 +1583,15 @@ export function buildLevelFourLombardia(k, options = {}) {
         spawn.animationSpeed,
         isDialogOpen,
       );
+
+      if (enemy && spawn.tracksFairyRescue) {
+        enemy._spawnRef = spawn;
+      }
+
+      return attachEnemyFallGuard(enemy, spawn);
     }
 
-    return addPatrolEnemy(
+    const enemy = addPatrolEnemy(
       k,
       spawn.x,
       spawn.y,
@@ -1583,6 +1604,12 @@ export function buildLevelFourLombardia(k, options = {}) {
       isDialogOpen,
       spawn.randomJump,
     );
+
+    if (enemy && spawn.tracksFairyRescue) {
+      enemy._spawnRef = spawn;
+    }
+
+    return attachEnemyFallGuard(enemy, spawn);
   }
 
   function resetEnemies() {
@@ -1593,6 +1620,20 @@ export function buildLevelFourLombardia(k, options = {}) {
     for (const spawn of enemySpawns) {
       spawnEnemy(spawn);
     }
+  }
+
+  function markEnemyAsTransformed(enemy) {
+    const spawn = enemy?._spawnRef;
+    if (!spawn?.tracksFairyRescue) return;
+    spawn._transformedToFairy = true;
+  }
+
+  function areAllEnemiesTransformed() {
+    const rescuableSpawns = enemySpawns.filter((spawn) => spawn.tracksFairyRescue);
+    return (
+      rescuableSpawns.length > 0 &&
+      rescuableSpawns.every((spawn) => spawn._transformedToFairy)
+    );
   }
 
   function addExitDoorTriggerAndBlocker(x, y) {
@@ -1778,6 +1819,7 @@ export function buildLevelFourLombardia(k, options = {}) {
           animationSpeed: config.animationSpeed,
           ignoreHazards: false,
           randomJump: config.randomJump,
+          tracksFairyRescue: true,
         };
         enemySpawns.push(spawn);
         spawnEnemy(spawn);
@@ -1802,6 +1844,8 @@ export function buildLevelFourLombardia(k, options = {}) {
     levelWidth,
     playerStart,
     resetEnemies,
+    markEnemyAsTransformed,
+    areAllEnemiesTransformed,
     unlockExitDoor() {
       if (!exitDoorBlocker) return;
       exitDoorBlocker.destroy();

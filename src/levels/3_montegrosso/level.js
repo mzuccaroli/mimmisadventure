@@ -999,9 +999,24 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     return noGroundAhead || wallAhead;
   }
 
+  function attachEnemyFallGuard(enemy, spawn) {
+    if (!enemy) return enemy;
+
+    const fallLimitY = mapOffsetY + rows * GAME_CONFIG.tile + GAME_CONFIG.tile * 2;
+    enemy.onUpdate(() => {
+      if (enemy.pos.y <= fallLimitY) return;
+      enemy.pos = k.vec2(spawn.x, spawn.y);
+      enemy.vel = k.vec2(0, 0);
+    });
+
+    return enemy;
+  }
+
   function spawnEnemy(spawn) {
+    if (spawn._transformedToFairy) return null;
+
     if (spawn.isFlying) {
-      return addFlyingEnemy(
+      const enemy = addFlyingEnemy(
         k,
         spawn.x,
         spawn.y,
@@ -1014,9 +1029,15 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
         spawn.bobAmplitude,
         spawn.bobSpeed,
       );
+
+      if (enemy && spawn.tracksFairyRescue) {
+        enemy._spawnRef = spawn;
+      }
+
+      return attachEnemyFallGuard(enemy, spawn);
     }
 
-    return addPatrolEnemy(
+    const enemy = addPatrolEnemy(
       k,
       spawn.x,
       spawn.y,
@@ -1028,6 +1049,12 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
       isDialogOpen,
       spawn.randomJump,
     );
+
+    if (enemy && spawn.tracksFairyRescue) {
+      enemy._spawnRef = spawn;
+    }
+
+    return attachEnemyFallGuard(enemy, spawn);
   }
 
   function resetEnemies() {
@@ -1038,6 +1065,20 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     for (const spawn of enemySpawns) {
       spawnEnemy(spawn);
     }
+  }
+
+  function markEnemyAsTransformed(enemy) {
+    const spawn = enemy?._spawnRef;
+    if (!spawn?.tracksFairyRescue) return;
+    spawn._transformedToFairy = true;
+  }
+
+  function areAllEnemiesTransformed() {
+    const rescuableSpawns = enemySpawns.filter((spawn) => spawn.tracksFairyRescue);
+    return (
+      rescuableSpawns.length > 0 &&
+      rescuableSpawns.every((spawn) => spawn._transformedToFairy)
+    );
   }
 
   function addExitDoor(x, y) {
@@ -1170,6 +1211,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
           patrolAxis: enemyConfig.patrolAxis,
           bobAmplitude: enemyConfig.bobAmplitude,
           bobSpeed: enemyConfig.bobSpeed,
+          tracksFairyRescue: true,
         };
         enemySpawns.push(spawn);
         spawnEnemy(spawn);
@@ -1183,6 +1225,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
           animationSpeed: enemyConfig.animationSpeed,
           randomJump: enemyConfig.randomJump,
           isFlying: false,
+          tracksFairyRescue: true,
         };
         enemySpawns.push(spawn);
         spawnEnemy(spawn);
@@ -1202,6 +1245,8 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     levelWidth,
     playerStart,
     resetEnemies,
+    markEnemyAsTransformed,
+    areAllEnemiesTransformed,
     unlockExitDoor() {
       if (!exitDoorBlocker) return;
       exitDoorBlocker.destroy();

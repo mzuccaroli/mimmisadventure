@@ -10,10 +10,20 @@ const LEVEL_GOAL_DIALOG_PAGES = [
   "Guida di Lombardia: ...\nPossiamo ampliare il livello con borghi, cascine e nuovi salti.",
 ];
 
+const LEVEL_LIBERATION_DIALOG_PAGES = [
+  "Guida di Lombardia:\nGrazie Mimmi per avere liberato Lombardia!",
+  "Guida di Lombardia: ...\nAnche gli ultimi mostri sono diventati innocue fatine.",
+  "Guida di Lombardia: ...\nOra la strada e' davvero libera.",
+];
+
 export function getLevelFourLombardiaSignDialogPages() {
   return [...SIGN_DIALOG_PAGES];
 }
 
 export function getLevelFourLombardiaGoalDialogPages() {
   return [...LEVEL_GOAL_DIALOG_PAGES];
+}
+
+export function getLevelFourLombardiaLiberationDialogPages() {
+  return [...LEVEL_LIBERATION_DIALOG_PAGES];
 }

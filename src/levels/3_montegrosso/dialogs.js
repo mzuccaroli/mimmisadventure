@@ -10,10 +10,20 @@ const LEVEL_GOAL_DIALOG_PAGES = [
   "Brigante di Montegrosso: ...\nPossiamo ampliare il livello con nuove serre, sentieri e salti.",
 ];
 
+const LEVEL_LIBERATION_DIALOG_PAGES = [
+  "Brigante di Montegrosso:\nGrazie Mimmi per avere liberato Montegrosso!",
+  "Brigante di Montegrosso: ...\nNon e' rimasto nemmeno un mostro tra campi e serre.",
+  "Brigante di Montegrosso: ...\nAdesso il borgo e' di nuovo nostro.",
+];
+
 export function getLevelThreeMontegrossoSignDialogPages() {
   return [...SIGN_DIALOG_PAGES];
 }
 
 export function getLevelThreeMontegrossoGoalDialogPages() {
   return [...LEVEL_GOAL_DIALOG_PAGES];
+}
+
+export function getLevelThreeMontegrossoLiberationDialogPages() {
+  return [...LEVEL_LIBERATION_DIALOG_PAGES];
 }
