@@ -1,19 +1,18 @@
 const SIGN_DIALOG_PAGES = [
-  "LOMBARDIA\n\nStrada d'ingresso ai campi del nord.",
-  "Attenzione: il sentiero e' corto ma pieno di piccoli ostacoli.",
-  "Raggiungi la guida in fondo al percorso.",
+  "LOMBARDIA\n\nAttenzione, scarichi tossici",
+  "Siamo infestati da ogni tipo di mostro",
+  "C'è una persona importante in fondo al percorso.",
 ];
 
 const LEVEL_GOAL_DIALOG_PAGES = [
-  "Guida di Lombardia:\nBen arrivata, Mimmi.",
-  "Guida di Lombardia: ...\nQuesto e' solo un primo tratto del viaggio, ma la strada e' aperta.",
-  "Guida di Lombardia: ...\nPossiamo ampliare il livello con borghi, cascine e nuovi salti.",
+  "Principessa delle fate:\nBen arrivata, Mimmi! Ti aspettavo!",
+  "Principessa delle fate: ...\nLe mie figlie sono state contagiate dai liquami tossici e si sono trasformate in mostri",
+  "Principessa delle fate: ...\nTi faccio dono della mia magia, così puoi tornare indietro a salvare tutte le mie figlie!",
 ];
 
 const LEVEL_LIBERATION_DIALOG_PAGES = [
-  "Guida di Lombardia:\nGrazie Mimmi per avere liberato Lombardia!",
-  "Guida di Lombardia: ...\nAnche gli ultimi mostri sono diventati innocue fatine.",
-  "Guida di Lombardia: ...\nOra la strada e' davvero libera.",
+  "Principessa delle fate:\nGrazie Mimmi la Lombardia è salva e tutte le mie figlie sono tornate!",
+  "Principessa delle fate: ...\nOra la strada e' davvero libera per tantissime altre avventure!.",
 ];
 
 export function getLevelFourLombardiaSignDialogPages() {

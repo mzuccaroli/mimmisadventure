@@ -248,6 +248,13 @@ function markLevelAsLiberated(levelId) {
   persistLiberatedLevelIds(liberatedLevelIds);
 }
 
+function areAllLevelsLiberated() {
+  const liberatedLevelIds = getLiberatedLevelIds();
+  return Object.keys(LEVEL_DEFINITIONS).every((levelId) =>
+    liberatedLevelIds.has(levelId),
+  );
+}
+
 function getCompletedLevelIds() {
   try {
     const stored = window.localStorage.getItem(COMPLETED_LEVELS_STORAGE_KEY);
@@ -375,6 +382,7 @@ loadEnvironmentTileFarmAssets(k);
 loadEnvironmentTileIndustrialAssets(k);
 loadEnemyTileAssets(k);
 loadServiceTiles(k);
+k.loadSprite("splashscreen", "splashscreen.png");
 k.setGravity(1800);
 
 let gameStarted = false;
@@ -699,6 +707,59 @@ function createEndGameScreen() {
   };
 }
 
+function createSplashScreen(onComplete) {
+  const ui = [];
+  let finished = false;
+
+  const addUi = (components) => {
+    const obj = k.add(components);
+    ui.push(obj);
+    return obj;
+  };
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    ui.forEach((obj) => obj.destroy());
+    onComplete();
+  };
+
+  addUi([
+    k.pos(0, 0),
+    k.rect(k.width(), k.height()),
+    k.color(0, 0, 0),
+    k.fixed(),
+    k.z(300),
+  ]);
+
+  addUi([
+    k.pos(k.width() / 2, k.height() / 2),
+    k.anchor("center"),
+    k.sprite("splashscreen"),
+    k.scale(Math.min(k.width() / 1920, k.height() / 1080, 1)),
+    k.fixed(),
+    k.z(301),
+  ]);
+
+  addUi([
+    k.pos(k.width() / 2, k.height() - 42),
+    k.anchor("center"),
+    k.text("Click o premi spazio per continuare", { size: 18 }),
+    k.color(255, 245, 230),
+    k.fixed(),
+    k.z(302),
+  ]);
+
+  const waitCtrl = k.wait(2.2, finish);
+  const clickCtrl = k.onClick(finish);
+  const keyCtrl = k.onKeyPress("space", finish);
+  ui.push({ destroy: () => waitCtrl.cancel() });
+  ui.push({ destroy: () => clickCtrl.cancel() });
+  ui.push({ destroy: () => keyCtrl.cancel() });
+
+  return finish;
+}
+
 function startGame(selectedCharacter) {
   if (gameStarted) return;
   gameStarted = true;
@@ -900,7 +961,7 @@ function startGame(selectedCharacter) {
     subtitle = "Click a character to start the level",
   } = {}) {
     if (levelExitSequenceActive) return;
-    if (areAllLevelsCompleted()) {
+    if (areAllLevelsLiberated()) {
       openEndGameScreen();
       return;
     }
@@ -1681,7 +1742,7 @@ function startGame(selectedCharacter) {
     }
 
     if (currentLevelId === "4") {
-      if (areAllLevelsCompleted()) {
+      if (areAllLevelsLiberated()) {
         openEndGameScreen();
         return;
       }
@@ -1731,14 +1792,18 @@ function startGame(selectedCharacter) {
 let destroySelectionScreen = () => {};
 const pendingCharacterChoice = getPlayerChoiceById(consumePendingCharacterId());
 
+function runInitialFlow() {
 if (pendingCharacterChoice) {
   startGame(pendingCharacterChoice);
-} else if (areAllLevelsCompleted()) {
+} else if (areAllLevelsLiberated()) {
   createEndGameScreen();
 } else {
-  destroySelectionScreen = createSelectionScreen((choice, levelId) => {
-    destroySelectionScreen();
-    setConfiguredLevelId(levelId);
-    startGame(choice);
-  });
+    destroySelectionScreen = createSelectionScreen((choice, levelId) => {
+      destroySelectionScreen();
+      setConfiguredLevelId(levelId);
+      startGame(choice);
+    });
+  }
 }
+
+createSplashScreen(runInitialFlow);

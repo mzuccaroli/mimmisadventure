@@ -14,7 +14,7 @@ export const GAME_CONFIG = {
 
 export const DEBUG_CONFIG = {
   enabled: true,
-  defaultLevelId: "3",
+  defaultLevelId: "1",
   flySpeed: 900,
   levelStorageKey: "mimmi_debug_level_id",
 };

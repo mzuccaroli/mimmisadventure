@@ -8,12 +8,13 @@ const LEVEL_GOAL_DIALOG_PAGES = [
   "Vecchio saggio:\nGrazie Mimmi finalmente sei arrivata!",
   "Vecchio saggio: ...\nOttimo lavoro! hai capito come sfuggire ai mostri\n ma solo tu puoi aiutarci a combatterli",
   "Vecchio saggio: ...\nHo scoperto che ad ANDRIA tu potrai trovare qualcosa per combatterli",
+  "Vecchio saggio: ...\nprendi questo peperoncino che ti renderà bravissima a saltare!",
   "Vecchio saggio: ...\nMIMMI AIUTACI TU!",
 ];
 
 const LEVEL_LIBERATION_DIALOG_PAGES = [
   "Vecchio saggio:\nGrazie Mimmi per avere liberato il villaggio!",
-  "Vecchio saggio: ...\nHai trasformato tutti i mostri in creature innocue.",
+  "Vecchio saggio: ...\nHai trasformato tutti i mostri in dolci fatine!.",
   "Vecchio saggio: ...\nAdesso possiamo ripartire verso Andria in pace.",
 ];
 
