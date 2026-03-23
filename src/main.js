@@ -1390,6 +1390,12 @@ function startGame(selectedCharacter) {
     jumpWithSpace:
       selectedCharacter.ability !== "melee" &&
       selectedCharacter.ability !== "ranged",
+    onFallOut: () => {
+      if (lives.isGameOver() || lives.isRespawning()) return;
+      if (dialogOpen || goalSequenceActive) return;
+      if (isDebugFlying()) return;
+      lives.damagePlayer();
+    },
   });
 
   player.onCollide(TAGS.dialogTrigger, () => {

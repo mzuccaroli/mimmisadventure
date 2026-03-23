@@ -59,13 +59,13 @@ const ENEMY_BY_CHAR = Object.freeze({
 const LEVEL_THREE_ASCII = [
   "               ^                         qwe                                ^                          QWT                                                                                  qwe              ^           |          ",
   "                                         adf^                               u                          ADF              ^                                                                   adf                             U       ",
-  "   P         qwe u                  qwe  cjh                                i        QWT               ZJC        qwe U                      QWT                                            cjh                             I       ",
+  "   P         qwe u                  qwe  cjh                                i        QWT               ZJC        qwe U                      QWT            *                               cjh                             I       ",
   "             adf i      E           adf   k                U                o        ADF                1   E     adf I                      ADF                            u                k              U               O       ",
   "             cjh o      @@@@        cjh   n                I     |          n        ZJC                1   %%%%% cjh O                      ZJC            &&&&            i                n      %%%%%   I               6       ",
   "              k  n      @@@@         k xmmbMMR             O                rMMR      1               xm4MR %%%%%  k  6                       1     E       &&&&            o                n      %%%%%   O            LMM8       ",
   "              n  n      @@@@      xmmbMMR n                6                n         1 ########        2   %%%%%  n  7                       1  ########   &&&&            rMMR             n      %%%%%   6  9            7       ",
-  "              n  n      @@@@         n    n         E      7                n       xm4MR   E           2   %%%%%  n  7                     xm4MR           &&&&           #n###E##          n      %%%%%   7#######        7  S    ",
-  "              n  n   #####################n    9           7        *     E n         2                 2   ###### n                 E  ######2#################   9  ########7##########################   ########  E   9 7       ",
+  "              n  n      @@@@         n    n         E      7       *        n       xm4MR   E           2   %%%%%  n  7                     xm4MR           &&&&           #n###E##          n      %%%%%   7#######        7  S    ",
+  "              n  n   #####################n    9           7                n         2                 2   ###### n                 E  ######2#################   9  ########7##########################   ########  E   9 7       ",
   "####################################################################################################################################################################################################################################",
   "####################################################################################################################################################################################################################################",
   "####################################################################################################################################################################################################################################",
@@ -136,7 +136,7 @@ const TERRAIN_CENTER_TILES = {
 
 const DECORATION_BY_CHAR = Object.freeze({
   s: { sprite: "farm_sign_post", z: 2, source: "farm" },
-  "*": { sprite: "flag", z: 2, source: "env", anim: "wave" },
+  "*": { sprite: "flag", z: 2, source: "env", anim: "wave", scale: 2 },
 });
 
 const BACKGROUND_HILL_SPECS = Object.freeze([
@@ -630,7 +630,7 @@ function addDecoration(k, decoration, x, y) {
       spriteName,
       decoration.anim ? { anim: decoration.anim } : undefined,
     ),
-    k.scale(1),
+    k.scale(decoration.scale ?? 1),
     k.opacity(1),
     k.z(decoration.z ?? 2),
   ]);

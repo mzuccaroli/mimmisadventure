@@ -12,7 +12,7 @@ const LEVEL_ONE_ASCII = [
   "    E            #######                                                 ~~                                              ",
   "                              ~~~                                               #####                                    ",
   "                                                                                                     ########            ",
-  "                         #######                                                   ^^^^^                                 ",
+  "                         #######                     *                             ^^^^^                                 ",
   "                         #######                                                   #####                                 ",
   "      #########                                   ######                                                                 ",
   "                                                                                                                         ",
@@ -49,6 +49,7 @@ const DECORATION_BY_CHAR = Object.freeze({
   s: { sprite: "sign_board_3", scale: 2 },
   o: { sprite: "obstacle_torch_red", scale: 2 },
   d: { sprite: "door_1", scale: 2 },
+  "*": { sprite: "flag", scale: 2, anim: "wave" },
 });
 
 function normalizeAsciiMap(lines) {
@@ -193,10 +194,13 @@ function addCloudPlatform(k, x, y, widthInTiles = 3) {
   }
 }
 
-function addDecoration(k, spriteName, x, y, scale = 2) {
+function addDecoration(k, spriteName, x, y, scale = 2, anim = null) {
   return k.add([
     k.pos(x, y),
-    k.sprite(getEnvironmentTileSprite(spriteName)),
+    k.sprite(
+      getEnvironmentTileSprite(spriteName),
+      anim ? { anim } : undefined,
+    ),
     k.scale(scale),
     k.z(2),
   ]);
@@ -534,7 +538,29 @@ export function buildLevelOne(k, options = {}) {
         ]);
       } else if (DECORATION_BY_CHAR[cell]) {
         const decoration = DECORATION_BY_CHAR[cell];
-        addDecoration(k, decoration.sprite, x, y, decoration.scale);
+        const decorationRef = addDecoration(
+          k,
+          decoration.sprite,
+          x,
+          y,
+          decoration.scale,
+          decoration.anim,
+        );
+
+        if (cell === "*") {
+          k.add([
+            k.pos(x, y - GAME_CONFIG.tile),
+            k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
+            k.area(),
+            k.opacity(0),
+            TAGS.checkpoint,
+            {
+              checkpointId: `level1-flag-${col}-${row}`,
+              respawnPos: k.vec2(x, y - GAME_CONFIG.tile),
+              flagRef: decorationRef,
+            },
+          ]);
+        }
       }
     }
   }

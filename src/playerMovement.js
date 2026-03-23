@@ -33,6 +33,7 @@ export function setupPlayerMovement(k, player, options) {
     isDebugFlying = () => false,
     canDoubleJump = false,
     jumpWithSpace = true,
+    onFallOut = null,
   } = options;
   let facingLeft = false;
   let wasDebugFlying = false;
@@ -177,8 +178,13 @@ export function setupPlayerMovement(k, player, options) {
       }
 
       if (player.pos.y > k.height() + 120) {
-        player.pos = k.vec2(playerStart.x, playerStart.y);
-        player.vel = k.vec2(0, 0);
+        if (typeof onFallOut === "function") {
+          onFallOut();
+        } else {
+          player.pos = k.vec2(playerStart.x, playerStart.y);
+          player.vel = k.vec2(0, 0);
+        }
+        return;
       }
 
       if (player.pos.x < 0) {
