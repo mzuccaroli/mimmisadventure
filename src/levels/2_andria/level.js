@@ -119,7 +119,7 @@ const LEVEL_TWO_ASCII = [
   "                                    RRRR                         =======          =======     E    =======                 ======",
   "                        HHHH        RRRRz         HHHHHH     X    GGGGGG          HHHHHHH          GGGGGGG                 RRRRRR    GGGG",
   "                        HHHH        RRRR|         HHHHHH          GGGGGG     6    HHHHHHH          GGGGGGG                 RRRRRR    GGGG",
-  "                        HHHH        RRRR|         HHHHHH          GGGGGG          HHHHHHH          GGGGGGG      6       z  RRRRRR    GGGG           ",
+  "      s                 HHHH        RRRR|         HHHHHH          GGGGGG          HHHHHHH          GGGGGGG      6       z  RRRRRR    GGGG           ",
   "   P         ^^^  ==    HHHH       #####|#        HHHHHH          GGGGGG          HHHHHHH          GGGGGGG              |  RRRRRR    GGGG      >                       S f",
   "######################@@@@@@@@@@@@@@@@##|###############@@@@###@@@@@@@@@###@@@@@@@@@###@@@@@@@@###@@@@@@################|################.                                   ",
   "######################@@@@@@@@@@@@@@@@##[iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii]####################################################",

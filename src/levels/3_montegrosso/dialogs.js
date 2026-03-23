@@ -1,5 +1,5 @@
 const SIGN_DIALOG_PAGES = [
-  "[MONTEGROSSO]\n\nCampi e serre del borgo.",
+  "MONTEGROSSO\n\nCampi e serre del borgo.",
   "Attenzione: i passaggi tra gli orti sono stretti e pieni di ostacoli.",
   "Raggiungi il saggio oltre la serra.",
 ];

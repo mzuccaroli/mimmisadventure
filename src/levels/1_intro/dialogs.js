@@ -1,5 +1,5 @@
 const SIGN_DIALOG_PAGES = [
-  "[ATTENZIONE!!]\n\nZona infestata da mostri!",
+  "ATTENZIONE!!\n\nZona infestata da mostri!",
   "Non sappiamo da dove arrivino ma siamo invasi da mostri e alieni!",
   "MIMMI! \n\n solo tu puoi aiutarci! ",
 ];

@@ -1,5 +1,5 @@
 const SIGN_DIALOG_PAGES = [
-  "[LOMBARDIA]\n\nStrada d'ingresso ai campi del nord.",
+  "LOMBARDIA\n\nStrada d'ingresso ai campi del nord.",
   "Attenzione: il sentiero e' corto ma pieno di piccoli ostacoli.",
   "Raggiungi la guida in fondo al percorso.",
 ];

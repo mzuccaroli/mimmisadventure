@@ -1,5 +1,5 @@
 const SIGN_DIALOG_PAGES = [
-  "[ANDRIA]\n\nIngresso est della citta'.",
+  "ANDRIA\n\nIngresso est della citta'.",
   "Attenzione: passerelle, tubi e canali sono instabili.",
   "Raggiungi il vecchio saggio oltre le bandiere.",
 ];

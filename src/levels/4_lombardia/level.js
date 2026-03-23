@@ -196,7 +196,7 @@ const LEVEL_FOUR_ASCII = [
   "                                    j-----n                                                                                                     ====       j-------k                  =====                                                 ------                                            ====                   =====                     ",
   "           L                        |                     ====C====            ========                                              GGGGGG                |               B                                                                 ====        ====                                              B      ====                                        ==C====",
   "           L                        p                     c   C                                                                      GGGGGG                p               B      c                                   ----          ====                                       ----        r   c           B                       GGGGGGG   j------k           C                                   ",
-  "  P        L                       Bv!B                   g   C                     E                                                GGGGGG                v!         E    B      g                                                                                                        f   g     E     B         ====          GGGGGGG   |                  C                                  ",
+  "  P  s     L                       Bv!B                   g   C                     E                                                GGGGGG                v!         E    B      g                                                                                                        f   g     E     B         ====          GGGGGGG   |                  C                                  ",
   "      ==== L       B!!B     E      B!!B              j----k   C        ##  ###                        *                              GGGGGG   ##!!##       !!            ====   j----k                          ######                                              ====                ######         ====B    j---k              GGGGGGG   p          ####    C    ##!!##                        ",
   "     ######L       B!!B   ######   B!!B    #####     |        C        ##!X#r                  b                                     GGGGGG   ##!!##   b   !!         ######    |            !X            m     ####                R              *                      b      m     ####            ####    | |      R         GGGGGGG   v!         ####!X# C    ##!!##       d       S       ",
   "        ###L       ====   ######   B!!B    ----------n        C        ##!!#f               ####    ####   T                      ####################     !!         ====  ----n       ####!!!       ####====####                    T                             ####====####     ####!!##        ====          ####====###############!!!!!!!!!!!!!!####!!# C    ##!!##        T          ",
@@ -958,6 +958,15 @@ function addDoorDecoration(k, x, y) {
   return addDecoration(k, "door", x, y, 2);
 }
 
+function addSignDecoration(k, x, y) {
+  return k.add([
+    k.pos(x, y),
+    k.sprite(getEnvironmentTileSprite("sign_board_3")),
+    k.scale(2),
+    k.z(2),
+  ]);
+}
+
 function addCheckpointFlagDecoration(k, x, y) {
   return k.add([
     k.pos(x, y),
@@ -1671,6 +1680,15 @@ export function buildLevelFourLombardia(k, options = {}) {
         }
       } else if (cell === "P") {
         playerStart = k.vec2(x, y - GAME_CONFIG.tile);
+      } else if (cell === "s") {
+        addSignDecoration(k, x, y);
+        k.add([
+          k.pos(x, y - GAME_CONFIG.tile),
+          k.rect(GAME_CONFIG.tile, GAME_CONFIG.tile * 2),
+          k.area(),
+          k.opacity(0),
+          TAGS.dialogTrigger,
+        ]);
       } else if (cell === "S") {
         npcSpawnPos = k.vec2(x, y);
       } else if (cell === "*") {
