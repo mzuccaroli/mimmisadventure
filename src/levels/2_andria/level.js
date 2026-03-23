@@ -842,6 +842,7 @@ export function buildLevelTwoAndria(k, options = {}) {
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
   const enemySpawns = [];
+  let exitDoorBlocker = null;
 
   function getPipeTileCenter(row, col) {
     return k.vec2(
@@ -1353,6 +1354,27 @@ export function buildLevelTwoAndria(k, options = {}) {
     }
   }
 
+  function addExitDoor(x, y) {
+    addDecoration(k, DECORATION_BY_CHAR.d, x, y);
+
+    exitDoorBlocker = k.add([
+      k.pos(x + GAME_CONFIG.tile * 0.35, y - GAME_CONFIG.tile * 1.2),
+      k.rect(GAME_CONFIG.tile * 0.9, GAME_CONFIG.tile * 2.2),
+      k.area(),
+      k.body({ isStatic: true }),
+      k.opacity(0),
+      TERRAIN_TAG,
+    ]);
+
+    k.add([
+      k.pos(x + GAME_CONFIG.tile * 0.15, y - GAME_CONFIG.tile * 1.2),
+      k.rect(GAME_CONFIG.tile * 1.2, GAME_CONFIG.tile * 2.2),
+      k.area(),
+      k.opacity(0),
+      TAGS.levelExit,
+    ]);
+  }
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const cell = mapLines[row][col];
@@ -1483,8 +1505,10 @@ export function buildLevelTwoAndria(k, options = {}) {
 
   if (npcSpawnPos) {
     addTownfolkNpc(k, npcSpawnPos.x, npcSpawnPos.y);
+    addExitDoor(npcSpawnPos.x + GAME_CONFIG.tile * 2, npcSpawnPos.y);
   } else {
     addTownfolkNpc(k, playerStart.x + GAME_CONFIG.tile * 4, playerStart.y);
+    addExitDoor(playerStart.x + GAME_CONFIG.tile * 6, playerStart.y);
   }
 
   for (const entryKey of pipeRoutes.keys()) {
@@ -1511,5 +1535,10 @@ export function buildLevelTwoAndria(k, options = {}) {
     resetEnemies,
     setupPipeTraversal,
     setupRopeTraversal,
+    unlockExitDoor() {
+      if (!exitDoorBlocker) return;
+      exitDoorBlocker.destroy();
+      exitDoorBlocker = null;
+    },
   };
 }

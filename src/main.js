@@ -55,38 +55,177 @@ const LEVEL_DEFINITIONS = Object.freeze({
 
 const HELP_HINT_TEXT = "Premi H per rivedere questo aiuto";
 const PLAYER_FRONT_FRAME = 4;
+const CHARACTER_UNLOCK_STORAGE_KEY = "mimmi_unlocked_characters";
+const PENDING_CHARACTER_STORAGE_KEY = "mimmi_pending_character_id";
+const LEVEL_SELECTOR_UNLOCK_STORAGE_KEY = "mimmi_level_selector_unlocked";
+const NEXT_LEVEL_BY_LEVEL_ID = Object.freeze({
+  1: "2",
+  2: "3",
+  3: "4",
+});
 const PLAYER_CHOICES = Object.freeze([
   {
     id: "brown",
     label: "Brown-haired Mimmi",
+    subtitle: "Just a regular genuis",
     sprite: "femalePlayerBrown",
     ability: "base",
+    unlockedByDefault: true,
   },
   {
     id: "black",
     label: "Black-haired Mimmi",
+    subtitle: "Really good jumper",
     sprite: "femalePlayerBlack",
     ability: "double_jump",
+    unlockLevelId: "1",
   },
   {
     id: "blonde",
     label: "Blonde-haired Mimmi",
+    subtitle: "Power of cime di rapa",
     sprite: "femalePlayerBlonde",
     ability: "melee",
+    unlockLevelId: "2",
   },
   {
     id: "red",
     label: "Red-haired Mimmi",
+    subtitle: "Super hot spicy olives",
     sprite: "femalePlayerRed",
     ability: "ranged",
+    unlockLevelId: "3",
   },
   {
     id: "magic",
     label: "Magic-haired Mimmi",
+    subtitle: "True fairy magic",
     sprite: "femalePlayerMagic",
     ability: "base",
+    unlockLevelId: "4",
   },
 ]);
+const CHARACTER_UNLOCK_BY_LEVEL_ID = Object.freeze({
+  1: "black",
+  2: "blonde",
+  3: "red",
+  4: "magic",
+});
+
+function getDefaultUnlockedCharacterIds() {
+  return PLAYER_CHOICES.filter((choice) => choice.unlockedByDefault).map(
+    (choice) => choice.id,
+  );
+}
+
+function getPlayerChoiceById(choiceId) {
+  return PLAYER_CHOICES.find((choice) => choice.id === choiceId) ?? null;
+}
+
+function getCharacterRewardChoiceForLevel(levelId) {
+  return getPlayerChoiceById(CHARACTER_UNLOCK_BY_LEVEL_ID[levelId]);
+}
+
+function getUnlockedCharacterIds() {
+  const defaultUnlockedIds = getDefaultUnlockedCharacterIds();
+
+  try {
+    const stored = window.localStorage.getItem(CHARACTER_UNLOCK_STORAGE_KEY);
+    if (!stored) {
+      return new Set(defaultUnlockedIds);
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return new Set(defaultUnlockedIds);
+    }
+
+    const validIds = new Set(PLAYER_CHOICES.map((choice) => choice.id));
+    const unlockedIds = parsed.filter((id) => validIds.has(id));
+    defaultUnlockedIds.forEach((id) => {
+      if (!unlockedIds.includes(id)) unlockedIds.push(id);
+    });
+    return new Set(unlockedIds);
+  } catch {
+    return new Set(defaultUnlockedIds);
+  }
+}
+
+function persistUnlockedCharacterIds(unlockedIds) {
+  try {
+    window.localStorage.setItem(
+      CHARACTER_UNLOCK_STORAGE_KEY,
+      JSON.stringify([...unlockedIds]),
+    );
+  } catch {
+    // Ignore localStorage failures for unlock persistence.
+  }
+}
+
+function unlockCharacterForLevel(levelId) {
+  const unlockedCharacterId = CHARACTER_UNLOCK_BY_LEVEL_ID[levelId];
+  if (!unlockedCharacterId) {
+    return null;
+  }
+
+  const unlockedIds = getUnlockedCharacterIds();
+  if (unlockedIds.has(unlockedCharacterId)) {
+    return null;
+  }
+
+  unlockedIds.add(unlockedCharacterId);
+  persistUnlockedCharacterIds(unlockedIds);
+  return unlockedCharacterId;
+}
+
+function persistPendingCharacterId(characterId) {
+  try {
+    window.localStorage.setItem(PENDING_CHARACTER_STORAGE_KEY, characterId);
+  } catch {
+    // Ignore localStorage failures for pending character selection.
+  }
+}
+
+function isLevelSelectorUnlocked() {
+  try {
+    return window.localStorage.getItem(LEVEL_SELECTOR_UNLOCK_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function unlockLevelSelector() {
+  try {
+    window.localStorage.setItem(LEVEL_SELECTOR_UNLOCK_STORAGE_KEY, "1");
+  } catch {
+    // Ignore localStorage failures for level selector unlock.
+  }
+}
+
+function resetGameProgressToNewGame() {
+  try {
+    window.localStorage.removeItem(CHARACTER_UNLOCK_STORAGE_KEY);
+    window.localStorage.removeItem(LEVEL_SELECTOR_UNLOCK_STORAGE_KEY);
+    window.localStorage.removeItem(PENDING_CHARACTER_STORAGE_KEY);
+  } catch {
+    // Ignore localStorage failures for new game reset.
+  }
+
+  setConfiguredLevelId("1");
+}
+
+function consumePendingCharacterId() {
+  try {
+    const characterId = window.localStorage.getItem(PENDING_CHARACTER_STORAGE_KEY);
+    if (!characterId) {
+      return null;
+    }
+    window.localStorage.removeItem(PENDING_CHARACTER_STORAGE_KEY);
+    return characterId;
+  } catch {
+    return null;
+  }
+}
 
 function getHelpTextForCharacter(character) {
   switch (character.ability) {
@@ -137,8 +276,20 @@ k.setGravity(1800);
 
 let gameStarted = false;
 
-function createSelectionScreen(onSelect) {
+function createSelectionScreen(onSelect, options = {}) {
+  const {
+    title = "Choose Your Mimmi",
+    subtitle = "Click a character to start the level",
+    forcedLevelId = null,
+  } = options;
   const ui = [];
+  const unlockedCharacterIds = getUnlockedCharacterIds();
+  const visiblePlayerChoices = PLAYER_CHOICES.filter((choice) =>
+    unlockedCharacterIds.has(choice.id),
+  );
+  const levelSelectorVisible = isLevelSelectorUnlocked();
+  let selectedLevelId = forcedLevelId ?? getConfiguredLevelId();
+  let handledSelection = false;
   const addUi = (components) => {
     const obj = k.add(components);
     ui.push(obj);
@@ -162,7 +313,7 @@ function createSelectionScreen(onSelect) {
   ]);
 
   addUi([
-    k.text("Choose Your Mimmi", { size: 34 }),
+    k.text(title, { size: 34 }),
     k.pos(k.width() / 2, 56),
     k.anchor("center"),
     k.color(61, 39, 23),
@@ -171,7 +322,7 @@ function createSelectionScreen(onSelect) {
   ]);
 
   addUi([
-    k.text("Click a character to start the level", { size: 18 }),
+    k.text(subtitle, { size: 18 }),
     k.pos(k.width() / 2, 96),
     k.anchor("center"),
     k.color(93, 67, 45),
@@ -179,22 +330,49 @@ function createSelectionScreen(onSelect) {
     k.z(102),
   ]);
 
+  const startNewGameButtonY = levelSelectorVisible ? k.height() - 34 : 138;
+  const startNewGameFrame = addUi([
+    k.pos(k.width() - 138, startNewGameButtonY),
+    k.anchor("center"),
+    k.rect(212, 42),
+    k.color(101, 78, 52),
+    k.area(),
+    k.fixed(),
+    k.z(103),
+  ]);
+
+  startNewGameFrame.onClick(() => {
+    if (handledSelection) return;
+    handledSelection = true;
+    resetGameProgressToNewGame();
+    window.location.reload();
+  });
+
+  addUi([
+    k.text("Start new game", { size: 18 }),
+    k.pos(k.width() - 138, startNewGameButtonY),
+    k.anchor("center"),
+    k.color(255, 247, 230),
+    k.fixed(),
+    k.z(104),
+  ]);
+
   const optionWidth = 190;
-  const optionHeight = 160;
+  const optionHeight = 182;
   const columnGap = 24;
   const rowGap = 24;
   const itemsPerRow = 3;
-  const totalRows = Math.ceil(PLAYER_CHOICES.length / itemsPerRow);
+  const totalRows = Math.ceil(visiblePlayerChoices.length / itemsPerRow);
   const centerX = k.width() / 2;
-  const centerY = k.height() / 2 + 18;
+  const centerY = levelSelectorVisible ? k.height() / 2 - 64 : k.height() / 2 + 18;
   const totalGridHeight = totalRows * optionHeight + (totalRows - 1) * rowGap;
   const firstRowY = centerY - totalGridHeight / 2 + optionHeight / 2;
 
-  PLAYER_CHOICES.forEach((choice, index) => {
+  visiblePlayerChoices.forEach((choice, index) => {
     const rowIndex = Math.floor(index / itemsPerRow);
     const columnIndex = index % itemsPerRow;
     const rowStart = rowIndex * itemsPerRow;
-    const rowCount = Math.min(itemsPerRow, PLAYER_CHOICES.length - rowStart);
+    const rowCount = Math.min(itemsPerRow, visiblePlayerChoices.length - rowStart);
     const totalRowWidth = rowCount * optionWidth + (rowCount - 1) * columnGap;
     const firstRowX = centerX - totalRowWidth / 2 + optionWidth / 2;
     const x = firstRowX + columnIndex * (optionWidth + columnGap);
@@ -220,15 +398,17 @@ function createSelectionScreen(onSelect) {
     ]);
 
     option.onClick(() => {
-      if (gameStarted) return;
-      onSelect(choice);
+      if (handledSelection) return;
+      handledSelection = true;
+      onSelect(choice, selectedLevelId);
     });
 
     addUi([
       k.pos(x, y - 20),
       k.anchor("center"),
       k.sprite(choice.sprite, { frame: PLAYER_FRONT_FRAME }),
-      k.scale(5),
+      k.scale(4.6),
+      k.opacity(1),
       k.fixed(),
       k.z(104),
     ]);
@@ -236,16 +416,92 @@ function createSelectionScreen(onSelect) {
     addUi([
       k.text(choice.label, {
         size: 18,
-        width: optionWidth - 24,
+        width: optionWidth - 34,
         align: "center",
       }),
-      k.pos(x, y + 56),
+      k.pos(x, y + 42),
       k.anchor("center"),
       k.color(53, 39, 24),
       k.fixed(),
       k.z(104),
     ]);
+
+    if (choice.subtitle) {
+      addUi([
+        k.text(choice.subtitle, {
+          size: 13,
+          width: optionWidth - 34,
+          align: "center",
+        }),
+        k.pos(x, y + 74),
+        k.anchor("center"),
+        k.color(112, 84, 56),
+        k.fixed(),
+        k.z(104),
+      ]);
+    }
   });
+
+  if (levelSelectorVisible) {
+    const levelButtonWidth = 74;
+    const levelButtonHeight = 42;
+    const levelGap = 16;
+    const levelButtonY = firstRowY + totalGridHeight / 2 + 238;
+    const levelButtons = [];
+
+    const syncLevelButtonState = () => {
+      levelButtons.forEach(({ levelId, frame, label }) => {
+        const active = levelId === selectedLevelId;
+        frame.color = active ? k.rgb(101, 78, 52) : k.rgb(176, 146, 112);
+        label.color = active ? k.rgb(255, 247, 230) : k.rgb(78, 56, 34);
+      });
+    };
+
+    addUi([
+      k.text("Select level", { size: 18 }),
+      k.pos(k.width() / 2, levelButtonY - 34),
+      k.anchor("center"),
+      k.color(61, 39, 23),
+      k.fixed(),
+      k.z(104),
+    ]);
+
+    const levelIds = Object.keys(LEVEL_DEFINITIONS);
+    const totalWidth =
+      levelIds.length * levelButtonWidth + (levelIds.length - 1) * levelGap;
+    const startX = k.width() / 2 - totalWidth / 2 + levelButtonWidth / 2;
+
+    levelIds.forEach((levelId, index) => {
+      const x = startX + index * (levelButtonWidth + levelGap);
+      const frame = addUi([
+        k.pos(x, levelButtonY),
+        k.anchor("center"),
+        k.rect(levelButtonWidth, levelButtonHeight),
+        k.color(176, 146, 112),
+        k.area(),
+        k.fixed(),
+        k.z(103),
+      ]);
+
+      frame.onClick(() => {
+        selectedLevelId = levelId;
+        syncLevelButtonState();
+      });
+
+      const label = addUi([
+        k.text(levelId, { size: 20 }),
+        k.pos(x, levelButtonY),
+        k.anchor("center"),
+        k.color(78, 56, 34),
+        k.fixed(),
+        k.z(104),
+      ]);
+
+      levelButtons.push({ levelId, frame, label });
+    });
+
+    syncLevelButtonState();
+  }
 
   return () => {
     ui.forEach((obj) => obj.destroy());
@@ -257,6 +513,7 @@ function startGame(selectedCharacter) {
   gameStarted = true;
 
   const helpText = getHelpTextForCharacter(selectedCharacter);
+  let currentPlayerSprite = selectedCharacter.sprite;
   let dialogOpen = false;
   let goalSequenceActive = false;
   let debugFlyActive = false;
@@ -267,6 +524,9 @@ function startGame(selectedCharacter) {
   let reachedDialogTrigger = false;
   let reachedGoal = false;
   let reachedCheckpointIds = new Set();
+  let pendingUnlockedCharacter = null;
+  let exitDoorUnlocked = false;
+  let levelExitSequenceActive = false;
 
   const currentLevelId = getConfiguredLevelId();
   const currentLevelDefinition =
@@ -284,7 +544,7 @@ function startGame(selectedCharacter) {
     k,
     level.playerStart,
     GAME_CONFIG.jumpForce,
-    selectedCharacter.sprite,
+    currentPlayerSprite,
   );
   const dialogSystem = createDialogSystem(k);
   const lives = setupLivesSystem(k, player, {
@@ -429,16 +689,155 @@ function startGame(selectedCharacter) {
 
   function unlockAfterDialog() {
     dialogOpen = false;
+    goalSequenceActive = false;
     if (!lives.isGameOver()) {
       player.isStatic = false;
     }
     unfreezeEnemies();
   }
 
-  function openDialogWithLock(pages) {
+  function unlockLevelExitDoor() {
+    exitDoorUnlocked = true;
+    if (typeof level.unlockExitDoor === "function") {
+      level.unlockExitDoor();
+    }
+  }
+
+  function openCharacterSelectionScreen({
+    forcedLevelId = null,
+    title = "Choose Your Mimmi",
+    subtitle = "Click a character to start the level",
+  } = {}) {
+    if (levelExitSequenceActive) return;
+    levelExitSequenceActive = true;
+    dialogOpen = false;
+    goalSequenceActive = true;
+    player.stop();
+    player.vel = k.vec2(0, 0);
+    player.isStatic = true;
+    freezeEnemies();
+
+    createSelectionScreen(
+      (choice, levelId) => {
+        persistPendingCharacterId(choice.id);
+        setConfiguredLevelId(levelId);
+        window.location.reload();
+      },
+      {
+        forcedLevelId,
+        title,
+        subtitle,
+      },
+    );
+  }
+
+  function openCharacterSelectionForNextLevel(nextLevelId) {
+    openCharacterSelectionScreen({
+      forcedLevelId: nextLevelId,
+      title: "Choose Your Mimmi",
+      subtitle: `Select your character for level ${nextLevelId}`,
+    });
+  }
+
+  function openLevelSelectionHub() {
+    unlockLevelSelector();
+    openCharacterSelectionScreen({
+      title: "Choose Your Mimmi",
+      subtitle: "Select your character and level",
+    });
+  }
+
+  function swapPlayerSprite(choice) {
+    if (!choice) return;
+
+    player.use(k.sprite(choice.sprite, { anim: "walkRight" }));
+    player.stop();
+    player.flipX = false;
+    player.frame = PLAYER_FRONT_FRAME;
+    currentPlayerSprite = choice.sprite;
+  }
+
+  function playUnlockTransformation(choice, onComplete = unlockAfterDialog) {
+    if (!choice) {
+      onComplete();
+      return;
+    }
+
+    goalSequenceActive = true;
+    player.stop();
+    player.vel = k.vec2(0, 0);
+    player.isStatic = true;
+    player.flipX = false;
+
+    const baseX = player.pos.x;
+    const baseY = player.pos.y;
+    const jumpHeight = GAME_CONFIG.tile * 3.4;
+    const duration = 1.05;
+    const spinTurns = 3;
+    const startScale = 2;
+    let transformed = false;
+    player.opacity = 0;
+
+    const rewardVisual = k.add([
+      k.pos(baseX, baseY),
+      k.sprite(currentPlayerSprite, { frame: PLAYER_FRONT_FRAME }),
+      k.scale(startScale),
+      k.opacity(1),
+      k.z(7),
+    ]);
+
+    addCheckpointGlow(
+      rewardVisual,
+      GAME_CONFIG.tile * 1.7,
+      GAME_CONFIG.tile * 2.1,
+      0.65,
+      9,
+    );
+
+    const startTime = k.time();
+    const transformCtrl = rewardVisual.onUpdate(() => {
+      const elapsed = k.time() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const arc = Math.sin(Math.PI * t);
+
+      rewardVisual.pos.x = baseX;
+      rewardVisual.pos.y = baseY - arc * jumpHeight;
+      rewardVisual.angle = t * 360 * spinTurns;
+      const scalePulse = startScale + arc * 0.18;
+      rewardVisual.scale = k.vec2(scalePulse, scalePulse);
+
+      if (!transformed && t >= 0.52) {
+        transformed = true;
+        rewardVisual.use(k.sprite(choice.sprite, { frame: PLAYER_FRONT_FRAME }));
+        createAttackFlash(
+          rewardVisual.pos.x + GAME_CONFIG.tile,
+          rewardVisual.pos.y + GAME_CONFIG.tile,
+          GAME_CONFIG.tile * 1.2,
+          GAME_CONFIG.tile * 1.6,
+          [255, 235, 150],
+          0.2,
+        );
+      }
+
+      if (t >= 1) {
+        transformCtrl.cancel();
+        rewardVisual.destroy();
+        swapPlayerSprite(choice);
+        player.pos = k.vec2(baseX, baseY);
+        player.angle = 0;
+        player.scale = k.vec2(startScale, startScale);
+        player.frame = PLAYER_FRONT_FRAME;
+        player.opacity = 1;
+        onComplete();
+      }
+    });
+  }
+
+  function openDialogWithLock(pages, options = {}) {
+    const { onClose = unlockAfterDialog } = options;
     lockForDialog();
     dialogSystem.openDialog(pages, {
-      onClose: unlockAfterDialog,
+      onClose,
     });
   }
 
@@ -481,7 +880,17 @@ function startGame(selectedCharacter) {
         celebrationCtrl.cancel();
         player.vel = k.vec2(0, 0);
         player.frame = 5;
-        openDialogWithLock(currentLevelDefinition.getGoalDialogPages());
+        openDialogWithLock(currentLevelDefinition.getGoalDialogPages(), {
+          onClose: () => {
+            playUnlockTransformation(pendingUnlockedCharacter, () => {
+              pendingUnlockedCharacter = null;
+              if (typeof level.unlockExitDoor === "function") {
+                unlockLevelExitDoor();
+              }
+              unlockAfterDialog();
+            });
+          },
+        });
       }
     });
   }
@@ -1000,7 +1409,27 @@ function startGame(selectedCharacter) {
     if (ropeTraversal.isRopeHanging()) return;
     if (reachedGoal) return;
     reachedGoal = true;
+    pendingUnlockedCharacter = getCharacterRewardChoiceForLevel(currentLevelId);
+    unlockCharacterForLevel(currentLevelId);
     playGoalCelebrationThenDialog();
+  });
+
+  player.onCollide(TAGS.levelExit, () => {
+    if (!exitDoorUnlocked || levelExitSequenceActive) return;
+    if (lives.isGameOver() || dialogOpen || goalSequenceActive) return;
+    if (isDebugFlying()) return;
+    if (pipeTraversal.isPipeTraveling()) return;
+    if (ropeTraversal.isRopeHanging()) return;
+
+    const nextLevelId = NEXT_LEVEL_BY_LEVEL_ID[currentLevelId];
+    if (nextLevelId) {
+      openCharacterSelectionForNextLevel(nextLevelId);
+      return;
+    }
+
+    if (currentLevelId === "4") {
+      openLevelSelectionHub();
+    }
   });
 
   player.onCollide(TAGS.checkpoint, (checkpoint) => {
@@ -1038,8 +1467,14 @@ function startGame(selectedCharacter) {
 }
 
 let destroySelectionScreen = () => {};
+const pendingCharacterChoice = getPlayerChoiceById(consumePendingCharacterId());
 
-destroySelectionScreen = createSelectionScreen((choice) => {
-  destroySelectionScreen();
-  startGame(choice);
-});
+if (pendingCharacterChoice) {
+  startGame(pendingCharacterChoice);
+} else {
+  destroySelectionScreen = createSelectionScreen((choice, levelId) => {
+    destroySelectionScreen();
+    setConfiguredLevelId(levelId);
+    startGame(choice);
+  });
+}

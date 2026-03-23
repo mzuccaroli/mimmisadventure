@@ -961,6 +961,7 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
   const enemySpawns = [];
+  let exitDoorBlocker = null;
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -1037,6 +1038,32 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
     for (const spawn of enemySpawns) {
       spawnEnemy(spawn);
     }
+  }
+
+  function addExitDoor(x, y) {
+    k.add([
+      k.pos(x, y - GAME_CONFIG.tile),
+      k.sprite(getEnvironmentTileSprite("door_1")),
+      k.scale(2),
+      k.z(2),
+    ]);
+
+    exitDoorBlocker = k.add([
+      k.pos(x + GAME_CONFIG.tile * 0.55, y - GAME_CONFIG.tile * 1.9),
+      k.rect(GAME_CONFIG.tile * 1.4, GAME_CONFIG.tile * 3.1),
+      k.area(),
+      k.body({ isStatic: true }),
+      k.opacity(0),
+      TERRAIN_TAG,
+    ]);
+
+    k.add([
+      k.pos(x + GAME_CONFIG.tile * 0.35, y - GAME_CONFIG.tile * 1.9),
+      k.rect(GAME_CONFIG.tile * 1.8, GAME_CONFIG.tile * 3.1),
+      k.area(),
+      k.opacity(0),
+      TAGS.levelExit,
+    ]);
   }
 
   for (let row = 0; row < rows; row++) {
@@ -1165,13 +1192,20 @@ export function buildLevelThreeMontegrosso(k, options = {}) {
 
   if (npcSpawnPos) {
     addTownfolkNpc(k, npcSpawnPos.x, npcSpawnPos.y);
+    addExitDoor(npcSpawnPos.x + GAME_CONFIG.tile * 4, npcSpawnPos.y);
   } else {
     addTownfolkNpc(k, playerStart.x + GAME_CONFIG.tile * 4, playerStart.y);
+    addExitDoor(playerStart.x + GAME_CONFIG.tile * 8, playerStart.y);
   }
 
   return {
     levelWidth,
     playerStart,
     resetEnemies,
+    unlockExitDoor() {
+      if (!exitDoorBlocker) return;
+      exitDoorBlocker.destroy();
+      exitDoorBlocker = null;
+    },
   };
 }

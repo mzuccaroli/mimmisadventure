@@ -412,6 +412,7 @@ export function buildLevelOne(k, options = {}) {
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
   const enemySpawns = [];
+  let exitDoorBlocker = null;
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -511,6 +512,26 @@ export function buildLevelOne(k, options = {}) {
           k.opacity(0),
           TAGS.dialogTrigger,
         ]);
+      } else if (cell === "d") {
+        const decoration = DECORATION_BY_CHAR[cell];
+        addDecoration(k, decoration.sprite, x, y, decoration.scale);
+
+        exitDoorBlocker = k.add([
+          k.pos(x + GAME_CONFIG.tile * 0.35, y - GAME_CONFIG.tile * 1.2),
+          k.rect(GAME_CONFIG.tile * 0.9, GAME_CONFIG.tile * 2.2),
+          k.area(),
+          k.body({ isStatic: true }),
+          k.opacity(0),
+          TERRAIN_TAG,
+        ]);
+
+        k.add([
+          k.pos(x + GAME_CONFIG.tile * 0.15, y - GAME_CONFIG.tile * 1.2),
+          k.rect(GAME_CONFIG.tile * 1.2, GAME_CONFIG.tile * 2.2),
+          k.area(),
+          k.opacity(0),
+          TAGS.levelExit,
+        ]);
       } else if (DECORATION_BY_CHAR[cell]) {
         const decoration = DECORATION_BY_CHAR[cell];
         addDecoration(k, decoration.sprite, x, y, decoration.scale);
@@ -580,5 +601,10 @@ export function buildLevelOne(k, options = {}) {
     levelWidth,
     playerStart,
     resetEnemies,
+    unlockExitDoor() {
+      if (!exitDoorBlocker) return;
+      exitDoorBlocker.destroy();
+      exitDoorBlocker = null;
+    },
   };
 }

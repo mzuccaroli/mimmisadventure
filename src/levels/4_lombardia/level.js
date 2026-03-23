@@ -1398,6 +1398,8 @@ export function buildLevelFourLombardia(k, options = {}) {
   let playerStart = k.vec2(GAME_CONFIG.playerStart.x, GAME_CONFIG.playerStart.y);
   let npcSpawnPos = null;
   const enemySpawns = [];
+  let exitDoorBlocker = null;
+  let exitDoorPos = null;
 
   function cellAtWorld(worldX, worldY) {
     const col = Math.floor(worldX / GAME_CONFIG.tile);
@@ -1575,6 +1577,34 @@ export function buildLevelFourLombardia(k, options = {}) {
     }
   }
 
+  function addExitDoorTriggerAndBlocker(x, y) {
+    exitDoorBlocker = k.add([
+      k.pos(x + GAME_CONFIG.tile * 0.55, y - GAME_CONFIG.tile * 1.9),
+      k.rect(GAME_CONFIG.tile * 1.4, GAME_CONFIG.tile * 3.1),
+      k.area(),
+      k.body({ isStatic: true }),
+      k.opacity(0),
+      TERRAIN_TAG,
+    ]);
+
+    k.add([
+      k.pos(x + GAME_CONFIG.tile * 0.35, y - GAME_CONFIG.tile * 1.9),
+      k.rect(GAME_CONFIG.tile * 1.8, GAME_CONFIG.tile * 3.1),
+      k.area(),
+      k.opacity(0),
+      TAGS.levelExit,
+    ]);
+  }
+
+  function addExitDoor(x, y) {
+    k.add([
+      k.pos(x, y - GAME_CONFIG.tile),
+      k.sprite(getEnvironmentTileIndustrialSprite("door")),
+      k.scale(2),
+      k.z(2),
+    ]);
+  }
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const cell = mapLines[row][col];
@@ -1635,7 +1665,7 @@ export function buildLevelFourLombardia(k, options = {}) {
       } else if (cell === "S") {
         npcSpawnPos = k.vec2(x, y);
       } else if (cell === "d") {
-        addDoorDecoration(k, x, y);
+        // The final exit door is placed after the NPC, not at the legacy map marker.
       } else if (
         isShaftCell(cell) ||
         PIPE_SOLID_CHARS.has(cell) ||
@@ -1720,9 +1750,21 @@ export function buildLevelFourLombardia(k, options = {}) {
     addTownfolkNpc(k, playerStart.x + GAME_CONFIG.tile * 4, playerStart.y);
   }
 
+  exitDoorPos = npcSpawnPos
+    ? k.vec2(npcSpawnPos.x + GAME_CONFIG.tile * 4, npcSpawnPos.y)
+    : k.vec2(playerStart.x + GAME_CONFIG.tile * 8, playerStart.y);
+  addExitDoor(exitDoorPos.x, exitDoorPos.y);
+
+  addExitDoorTriggerAndBlocker(exitDoorPos.x, exitDoorPos.y);
+
   return {
     levelWidth,
     playerStart,
     resetEnemies,
+    unlockExitDoor() {
+      if (!exitDoorBlocker) return;
+      exitDoorBlocker.destroy();
+      exitDoorBlocker = null;
+    },
   };
 }

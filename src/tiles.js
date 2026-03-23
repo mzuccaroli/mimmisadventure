@@ -25,6 +25,7 @@ export const TAGS = {
   spike: "spike",
   dialogTrigger: "dialogTrigger",
   checkpoint: "checkpoint",
+  levelExit: "levelExit",
 };
 
 export const TILE_FRAMES = {
