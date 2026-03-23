@@ -208,4 +208,35 @@ export function loadTileAssets(k) {
       },
     },
   });
+
+  k.loadSprite(
+    "npcWingsAndTiara2",
+    "sprites/Characters/NPC/processed/wings-and-tiara-2-sheet.png",
+    {
+      sliceX: 3,
+      sliceY: 4,
+      anims: {
+        back: {
+          frames: [0, 1, 2],
+          loop: true,
+          speed: 6,
+        },
+        right: {
+          frames: [3, 4, 5],
+          loop: true,
+          speed: 6,
+        },
+        front: {
+          frames: [6, 7, 8],
+          loop: true,
+          speed: 6,
+        },
+        left: {
+          frames: [9, 10, 11],
+          loop: true,
+          speed: 6,
+        },
+      },
+    },
+  );
 }

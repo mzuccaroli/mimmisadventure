@@ -66,6 +66,18 @@ const ENEMY_BY_CHAR = Object.freeze({
     speed: 72,
     animationSpeed: 7,
   },
+  9: {
+    enemyName: "alien_4",
+    patrolWidth: GAME_CONFIG.tile * 8,
+    speed: 78,
+    animationSpeed: 7,
+    randomJump: {
+      minInterval: 0.9,
+      maxInterval: 2.1,
+      chance: 0.65,
+      jumpForce: GAME_CONFIG.jumpForce * 0.78,
+    },
+  },
   T: {
     enemyName: "robot_s",
     patrolWidth: GAME_CONFIG.tile * 5,
@@ -175,18 +187,19 @@ const FOREGROUND_DECOR_SPECS = Object.freeze([
 ]);
 
 const LEVEL_FOUR_ASCII = [
+  "                                                                                                                                                                                                                                                                                                           9                         9              9                   9                         ",
   "            ====          ----                                          j------k                                                    ----                     ====                                                                       ----                ====                                         ------------------------------------------------------------------------------------ ",
-  "                                                          ====          |                                              ----                 ====                        j------k",
-  "-------                                   j------k                                                                                                                      |                   --------------------------------",
+  "                                                          ====          |                                              ----                 ====                        j------k                    R",
+  "-------                                   j------k                                                m                                                  d                  |                   --------------------------------",
   "                                          |                                               j----------------K                                       j------k                                                                                   ",
   "                                          |                                               |                                                        |",
   "                                    j-----n                                                                                                     ====       j-------k                  =====                                                 ------                                            ====                   =====                     ",
   "           L                        |                     ====C====            ========                                              GGGGGG                |               B                                                                 ====        ====                                              B      ====                                        ==C====",
   "           L                        p                     c   C                                                                      GGGGGG                p               B      c                                   ----          ====                                       ----        r   c           B                       GGGGGGG   j------k           C                                   ",
-  "  P        L                       Bv!B                   g   C                     E                                                GGGGGG                v!         E    B      g                                                            E                                           f   g     E     B         ====          GGGGGGG   |                  C                    E              ",
+  "  P        L                       Bv!B                   g   C                     E                                                GGGGGG                v!         E    B      g                                                                                                        f   g     E     B         ====          GGGGGGG   |                  C                                  ",
   "      ==== L       B!!B     E      B!!B              j----k   C        ##  ###                                                       GGGGGG   ##!!##       !!            ====   j----k                          ######                                              ====                ######         ====B    j---k              GGGGGGG   p          ####    C    ##!!##                        ",
-  "     ######L       B!!B   ######   B!!B    #####     |        C        ##!X#r                  b   m   R      d                      GGGGGG   ##!!##   b   !!         ######    |            !X            m     ####                R                                     b      m     ####            ####    | |      R         GGGGGGG   v!         ####!X# C    ##!!##       d",
-  "        ###L       ====   ######   B!!B    ----------n        C        ##!!#f               ####    ####   T                      ####################     !!         ====  ----n       ####!!!       ####====####                    T                             ####====####     ####!!##        ====          ####====###############!!!!!!!!!!!!!!####!!# C    ##!!##        T     S    ",
+  "     ######L       B!!B   ######   B!!B    #####     |        C        ##!X#r                  b                                     GGGGGG   ##!!##   b   !!         ######    |            !X            m     ####                R                                     b      m     ####            ####    | |      R         GGGGGGG   v!         ####!X# C    ##!!##       d       S       ",
+  "        ###L       ====   ######   B!!B    ----------n        C        ##!!#f               ####    ####   T                      ####################     !!         ====  ----n       ####!!!       ####====####                    T                             ####====####     ####!!##        ====          ####====###############!!!!!!!!!!!!!!####!!# C    ##!!##        T          ",
   "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
   "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
   "###########L############################   ##########################  ##!!!!!!#      ####################################      ##########################!!!!#############################!!!!############################################################      ##########################################!!!!############################################!!!!#####################################",
@@ -1107,7 +1120,7 @@ function addTownfolkNpc(k, x, y) {
   const npcPosY = y + GAME_CONFIG.tile - NPC_VISUAL_HEIGHT * NPC_SCALE;
   const npc = k.add([
     k.pos(x, npcPosY),
-    k.sprite("npcTownfolkOldM001", { anim: "front" }),
+    k.sprite("npcWingsAndTiara2", { anim: "front" }),
     k.scale(NPC_SCALE),
     k.area(),
     k.z(3),
@@ -1130,14 +1143,23 @@ function addPatrolEnemy(
   shouldTurn = null,
   ignoreHazards = false,
   isDialogOpen = () => false,
+  randomJump = null,
 ) {
   const animationFrames = getEnemySpriteFrames(enemyName);
+  const jumpSettings = randomJump
+    ? {
+        minInterval: randomJump.minInterval ?? 1,
+        maxInterval: randomJump.maxInterval ?? 2,
+        chance: randomJump.chance ?? 0.5,
+        jumpForce: randomJump.jumpForce ?? GAME_CONFIG.jumpForce * 0.75,
+      }
+    : null;
   const enemy = k.add([
     k.pos(x, y),
     k.sprite(animationFrames[0]),
     k.scale(1.5),
     k.area(ignoreHazards ? { collisionIgnore: [TAGS.hazard] } : undefined),
-    k.body(),
+    k.body(jumpSettings ? { jumpForce: jumpSettings.jumpForce } : {}),
     k.z(4),
     TAGS.hazard,
     "enemy",
@@ -1150,6 +1172,10 @@ function addPatrolEnemy(
   let animationTimer = 0;
   let frameIndex = 0;
   let turnCooldown = 0;
+  let jumpTimer = jumpSettings
+    ? jumpSettings.minInterval +
+      Math.random() * (jumpSettings.maxInterval - jumpSettings.minInterval)
+    : 0;
 
   enemy.onCollide(TERRAIN_TAG, (_, col) => {
     if (turnCooldown > 0 || !col || !enemy.isGrounded()) return;
@@ -1191,6 +1217,17 @@ function addPatrolEnemy(
     }
 
     turnCooldown = Math.max(0, turnCooldown - k.dt());
+    if (jumpSettings) {
+      jumpTimer -= k.dt();
+      if (jumpTimer <= 0) {
+        if (enemy.isGrounded() && Math.random() <= jumpSettings.chance) {
+          enemy.jump();
+        }
+        jumpTimer =
+          jumpSettings.minInterval +
+          Math.random() * (jumpSettings.maxInterval - jumpSettings.minInterval);
+      }
+    }
     const bbox = enemy.worldArea().bbox();
 
     if (
@@ -1524,6 +1561,7 @@ export function buildLevelFourLombardia(k, options = {}) {
       shouldEnemyTurn,
       spawn.ignoreHazards,
       isDialogOpen,
+      spawn.randomJump,
     );
   }
 
@@ -1668,6 +1706,7 @@ export function buildLevelFourLombardia(k, options = {}) {
           enemyName: config.enemyName,
           animationSpeed: config.animationSpeed,
           ignoreHazards: false,
+          randomJump: config.randomJump,
         };
         enemySpawns.push(spawn);
         spawnEnemy(spawn);
