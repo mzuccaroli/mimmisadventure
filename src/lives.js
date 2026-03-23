@@ -166,10 +166,17 @@ export function setupLivesSystem(k, player, options) {
     });
   }
 
+  function restoreFullLives() {
+    if (gameOver) return;
+    lives = maxLives;
+    updateLivesDisplay();
+  }
+
   updateLivesDisplay();
 
   return {
     damagePlayer,
+    restoreFullLives,
     isGameOver: () => gameOver,
     isRespawning: () => respawning,
     setRespawnPos: (nextRespawnPos) => {

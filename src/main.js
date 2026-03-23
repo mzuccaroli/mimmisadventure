@@ -1444,6 +1444,11 @@ function startGame(selectedCharacter) {
     if (pipeTraversal.isPipeTraveling()) return;
     if (ropeTraversal.isRopeHanging()) return;
     if (!checkpoint?.checkpointId || !checkpoint?.respawnPos) return;
+
+    if (isMagicCharacter()) {
+      lives.restoreFullLives();
+    }
+
     if (reachedCheckpointIds.has(checkpoint.checkpointId)) return;
 
     reachedCheckpointIds.add(checkpoint.checkpointId);
